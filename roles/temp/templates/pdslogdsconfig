@@ -1,0 +1,31 @@
+dsconfig set-log-rotation-policy-prop --policy-name "Size Limit Rotation Policy" --set "file-size-limit:200 mb"
+
+dsconfig create-log-retention-policy --policy-name "File Count Retention Policy 3" --type file-count --set "description:File Count Retention Policy to retain only 3 files" --set number-of-files:3
+
+dsconfig create-log-retention-policy --policy-name "File Count Retention Policy 7" --type file-count --set "description:File Count Retention Policy to retain only 7 files" --set number-of-files:7
+
+dsconfig set-log-publisher-prop --publisher-name "Debug ACI Logger" --set enabled:false --set log-file:{{ ping_directory_log_location }}/debug-aci --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Expensive Operations Access Logger" --set enabled:false --set log-file:{{ ping_directory_log_location }}/expensive-ops --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Failed Operations Access Logger" --set enabled:true --remove "rotation-policy:24 Hours Time Limit Rotation Policy" --remove "retention-policy:Size Limit Retention Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 7" --set log-file:{{ ping_directory_log_location }}/failed-ops --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Access Logger" --set enabled:true --remove "rotation-policy:24 Hours Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 7" --set log-file:{{ ping_directory_log_location }}/access --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Audit Logger" --set enabled:false --set log-file:{{ ping_directory_log_location }}/audit --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Debug Logger" --set enabled:false --set log-file:{{ ping_directory_log_location }}/debug --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Error Logger" --set enabled:true --remove "rotation-policy:7 Days Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 7" --set log-file:{{ ping_directory_log_location }}/errors --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "JSON Access Logger" --set enabled:true --remove "rotation-policy:24 Hours Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 3" --set log-file:{{ ping_directory_log_location }}/access.json --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "JSON Error Logger" --set enabled:true --remove "rotation-policy:7 Days Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 3" --set log-file:{{ ping_directory_log_location }}/errors.json --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Replication Repair Logger" --set enabled:true --remove "rotation-policy:7 Days Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 7" --set log-file:{{ ping_directory_log_location }}/replication --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Server SDK Extension Debug Logger" --set enabled:false --set log-file:{{ ping_directory_log_location }}/server-sdk-extension-debug --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Successful Searches with No Entries Returned" --set enabled:false --set log-file:{{ ping_directory_log_location }}/searches-returning-no-entries --set log-file-permissions:640
+    
+dsconfig set-log-publisher-prop --publisher-name "HTTP Detailed Access" --set enabled:true --remove "rotation-policy:24 Hours Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --remove "retention-policy:Free Disk Space Retention Policy" --add "retention-policy:File Count Retention Policy 3" --set log-file:{{ ping_directory_log_location }}/http-detailed-access --set log-file-permissions:640

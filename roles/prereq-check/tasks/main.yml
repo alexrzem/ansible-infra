@@ -1,0 +1,519 @@
+---
+
+##
+# Description: This task does various prerequisite checks before proceeding with the build.
+##
+
+#################################################################################################
+### JDK CHECK ###
+#################################################################################################
+
+# The result of this task is registered in the name called 'jdk_result' which is used in the next task
+
+- name: Check JDK
+  stat:
+    path: /opt/app/jdk
+  register: jdk_result
+
+# Installing jdk if the if the jdk folder is not present in the machine
+
+- name: Install JDK
+  include_role:
+    name: jdk-install
+  with_items: "{{ ansible_fqdn }}"
+  when: jdk_result.stat.exists == False
+
+
+#################################################################################################
+### vticerts Folder CHECK ###
+#################################################################################################
+
+- name: Check vticerts folder
+  stat:
+    path: "{{ cert_folder_location }}"
+  register: vti_check_result
+
+- name: Check vticerts folder
+  fail:
+    msg: "The {{ ansible_fqdn }} machine does not contain the vticerts folder. Please configure this folder and run the jenkins build"
+  when: vti_check_result.stat.exists == False
+
+
+#################################################################################################
+### .keypass and .storepass CHECK ###
+#################################################################################################
+
+- name: Check .keypass
+  stat:
+    path: "{{ keypass_password_location }}"
+  register: keypass_result
+
+- name: Check .storepass
+  stat:
+    path: "{{ storepass_password_location }}"
+  register: storepass_result
+
+- name: Install keypass and storepass
+  include_role:
+    name: store-pass-general
+  with_items: "{{ ansible_fqdn }}"
+  when: keypass_result.stat.exists == False or storepass_result.stat.exists == False
+
+
+#################################################################################################
+### Certificate CHECK Keystore ###
+#################################################################################################
+
+- name: Check server certs
+  shell: "{{ jdk_location }}/bin/keytool -list -keystore {{ keystore_location }} -storepass {{ keystore_password }}"
+  register: cert_check_result
+
+# Checking for godaddyroot certificate. If it's not there, then we are displaying a 'fail msg' to configure this.
+- name: godaddyroot check
+  fail:
+    msg: "godaddyroot certificate not present. Please configure this and run the jenkins build"
+  when: "'godaddyroot' not in cert_check_result.stdout"
+
+- name: server-cert check
+  fail:
+    msg: "server-cert certificate not present. Please configure this and run the jenkins build"
+  when: "'server-cert' not in cert_check_result.stdout"
+
+# Checking for fed-cert certificate. If it's not there, then we are displaying a 'fail msg' to configure this.
+# Ignoring this in China environment. Coz China doesn't have fed-cert
+
+- name: fed-cert cert check (for OpenAMMachines only)
+  fail:
+    msg: "fed-cert certificate not present. Please configure this and run the jenkins build"
+  when: "'fed-cert' not in cert_check_result.stdout and 'OpenAMMachines' in group_names and data_center_location != 'BJI'"
+
+
+#################################################################################################
+### Certificate CHECK Truststore ###
+#################################################################################################
+
+- name: Check server certs
+  shell: "{{ jdk_location }}/bin/keytool -list -keystore {{ trustore_location }} -storepass {{ keystore_password }}"
+  register: cert_check_truststore_result
+
+- name: godaddyroot check
+  fail:
+    msg: "godaddyroot certificate not present in truststore. Please configure this and run the jenkins build"
+  when: "'godaddyroot' not in cert_check_truststore_result.stdout"
+
+- name: server-cert check
+  fail:
+    msg: "server-cert certificate not present in truststore. Please configure this and run the jenkins build"
+  when: "'server-cert' not in cert_check_truststore_result.stdout"
+
+
+#################################################################################################
+### File Descriptor Check ###
+#################################################################################################
+
+# Parse the contents in limits.conf file and grep for iam, soft and nofile.
+# Register the contents in soft_file_desc variable by printing it.
+
+- name: Get Soft File Descriptor
+  raw: (less /etc/security/limits.conf | grep 'iam\s*soft\s*nofile' | awk '{ print $NF }' )
+  register: soft_file_desc
+
+# display the soft_file_descriptor message.
+
+- debug: msg="Soft file descriptor= {{ soft_file_desc.stdout }}"
+
+# Check whether the soft file descriptor value is present in the file or not. If not, then place "131072" as the value
+
+- name: Place Soft file descriptor value
+  raw: echo "iam          soft    nofile           131072" >> /etc/security/limits.conf
+  when: soft_file_desc.stdout|int == 0
+  become: yes
+  become_user: "root"
+
+# Check whether the soft file descriptor value is not equal to "131072". If not, replace it with "131072"
+
+- name: Replace Soft file descriptor value
+  raw:  (sed -i -e 's/iam[ ]*soft[ ]*nofile[ ]*[0-9]*/iam          soft    nofile          131072/g' /etc/security/limits.conf)
+  when: soft_file_desc.stdout|int != 131072
+  become: yes
+  become_user: "root"
+
+- name: Get Hard File Descriptor
+  raw: (less /etc/security/limits.conf | grep 'iam\s*hard\s*nofile' | awk '{ print $NF }' )
+  register: hard_file_desc
+
+- debug: msg="Hard file descriptor= {{ hard_file_desc.stdout }}"
+
+# Check whether the hard file descriptor value is present in the file or not. If not, then place "131072" as the value
+
+- name: Place Hard file descriptor value
+  raw: echo "iam          hard    nofile           131072" >> /etc/security/limits.conf
+  when: soft_file_desc.stdout|int == 0
+  become: yes
+  become_user: "root"
+
+# Check whether the hard file descriptor value is not equal to "131072". If not, replace it with "131072"
+
+- name: Replace Hard file descriptor value
+  raw:  (sed -i -e 's/iam[ ]*hard[ ]*nofile[ ]*[0-9]*/iam          hard    nofile          131072/g' /etc/security/limits.conf)
+  when: hard_file_desc.stdout|int != 131072
+  become: yes
+  become_user: "root"
+
+
+#################################################################################################
+### Max user process Check ###
+#################################################################################################
+
+
+- name: Get Soft nproc
+  raw: (less /etc/security/limits.conf | grep 'iam\s*soft\s*nproc' | awk '{ print $NF }' )
+  register: soft_nproc
+
+- debug: msg="Soft nproc= {{ soft_nproc.stdout }}"
+
+- name: Place soft nproc value
+  raw: echo "iam          soft    nproc            131072" >> /etc/security/limits.conf
+  when: soft_nproc.stdout|int == 0
+  become: yes
+  become_user: "root"
+
+- name: Replace soft nproc value
+  raw:  (sed -i -e 's/iam[ ]*soft[ ]*nproc[ ]*[0-9]*/iam          soft    nproc           131072/g' /etc/security/limits.conf)
+  when: soft_nproc.stdout|int != 131072
+  become: yes
+  become_user: "root"
+
+- name: Get Hard nproc
+  raw: (less /etc/security/limits.conf | grep 'iam\s*hard\s*nproc' | awk '{ print $NF }' )
+  register: hard_nproc
+
+- debug: msg="Hard nproc= {{ hard_nproc.stdout }}"
+
+- name: Place hard nproc value
+  raw: echo "iam          hard    nproc            131072" >> /etc/security/limits.conf
+  when: hard_nproc.stdout|int == 0
+  become: yes
+  become_user: "root"
+
+- name: Replace hard nproc value
+  raw:  (sed -i -e 's/iam[ ]*hard[ ]*nproc[ ]*[0-9]*/iam          hard    nproc           131072/g' /etc/security/limits.conf)
+  when: hard_nproc.stdout|int != 131072
+  become: yes
+  become_user: "root"
+
+
+#################################################################################################
+### Max user process Check in /etc/security/limits.d/20-nproc.conf###
+#################################################################################################
+
+- name: Get Soft nproc
+  raw: (less /etc/security/limits.d/20-nproc.conf | grep 'iam\s*soft\s*nproc' | awk '{ print $NF }' )
+  register: soft_limitsd_nproc
+
+- debug: msg="Soft nproc in limits.d/20-nproc.conf= {{ soft_limitsd_nproc.stdout }}"
+
+- name: Place soft nproc value
+  raw: echo "iam          soft    nproc            131072" >> /etc/security/limits.d/20-nproc.conf
+  when: soft_limitsd_nproc.stdout|int == 0
+  become: yes
+  become_user: "root"
+
+- name: Replace soft nproc value
+  raw:  (sed -i -e 's/iam[ ]*soft[ ]*nproc[ ]*[0-9]*/iam          soft    nproc           131072/g' /etc/security/limits.d/20-nproc.conf)
+  when: soft_limitsd_nproc.stdout|int != 131072
+  become: yes
+  become_user: "root"
+
+
+#################################################################################################
+### User core file size Check ###
+#################################################################################################
+
+- name: Get Soft core
+  raw: (less /etc/security/limits.conf | grep 'iam\s*soft\s*core' | awk '{ print $NF }' )
+  register: soft_core
+
+- debug: msg="Soft core= {{ soft_core.stdout }}"
+
+- name: Place soft core value
+  raw: echo "iam          soft    core            unlimited" >> /etc/security/limits.conf
+  when: soft_core.stdout == ""
+  become: yes
+  become_user: "root"
+
+# Check whether the soft file descriptor value is not equal to "unlimited". If yes, replace it with "unlimited"
+- name: Replace soft core value
+  raw:  (sed -i -e 's/iam[ ]*soft[ ]*core[ ]*[0-9]*[a-z]*[A-Z]*/iam          soft    core            unlimited/g' /etc/security/limits.conf)
+  when: soft_core.stdout != "unlimited"
+  become: yes
+  become_user: "root"
+
+- name: Get Hard core
+  raw: (less /etc/security/limits.conf | grep 'iam\s*hard\s*core' | awk '{ print $NF }' )
+  register: hard_core
+
+- debug: msg="Hard core= {{ hard_core.stdout }}"
+
+- name: Place hard core value
+  raw: echo "iam          hard    core            unlimited" >> /etc/security/limits.conf
+  when: hard_core.stdout == ""
+  become: yes
+  become_user: "root"
+
+- name: Replace hard core value
+  raw:  (sed -i -e 's/iam[ ]*hard[ ]*core[ ]*[0-9]*[a-z]*[A-Z]*/iam          hard    core            unlimited/g' /etc/security/limits.conf)
+  when: hard_core.stdout != "unlimited"
+  become: yes
+  become_user: "root"
+
+
+#################################################################################################
+### Shared memory segment value Check for Ping Metric Machine only ###
+#################################################################################################
+
+- name: Get kernel.shmmax value
+  raw: (less /etc/sysctl.conf | grep 'kernel.shmmax' | awk '{ print $NF }' )
+  register: shmmax_val
+
+- debug: msg="kernel.shmmax value= {{ shmmax_val.stdout }}"
+  when: "'PingSyncMachines' in group_names"
+
+# check whether kernel.shmmax value is not equal to "2147483648"
+
+- name: Replace kernel.shmmax value
+  raw:  (sed -i -e 's/kernel.shmmax[ ]*=[ ]*[0-9]*/kernel.shmmax = 2147483648/g' /etc/sysctl.conf)
+  when: "shmmax_val.stdout|int != 2147483648 and 'PingSyncMachines' in group_names"
+  become: yes
+  become_user: "root"
+
+- name: Write sysctl value
+  raw: sysctl -w kernel.shmmax=2147483648
+  become: yes
+  become_user: "root"
+  args:
+    chdir: "/etc"
+
+
+#################################################################################################
+### Bash profile check for iam ###
+#################################################################################################
+
+#HISTTIMEFORMAT
+- name: Get HISTTIMEFORMAT value
+  raw: (less /home/iam/.bash_profile | grep 'HISTTIMEFORMAT' )
+  register: bash_time
+  ignore_errors: yes
+
+- debug: msg="HISTTIMEFORMAT value= {{ bash_time.stdout }}"
+
+- name: Replace HISTTIMEFORMAT value
+  raw:  (sed -i -e 's/export HISTTIMEFORMAT="[a-z%\/ A-Z]*"/export HISTTIMEFORMAT="%d\/%m\/%y %T "/g' /home/iam/.bash_profile)
+  when: bash_time.stdout != 'export HISTTIMEFORMAT=\"%d/%m/%y %T \"\r\n' and bash_time.stdout != ""
+
+- name: Place HISTTIMEFORMAT value
+  raw: echo 'export HISTTIMEFORMAT="%d/%m/%y %T "' >> /home/iam/.bash_profile 
+  when: bash_time.stdout == ""
+
+#HISTFILESIZE
+- name: Get HISTFILESIZE value
+  raw: (less /home/iam/.bash_profile | grep 'HISTFILESIZE' | grep -o '[0-9]*')
+  register: bash_filesize
+  ignore_errors: yes
+
+- debug: msg="HISTFILESIZE value= {{ bash_filesize.stdout }}"
+
+- name: Replace HISTFILESIZE value
+  raw: (sed -i -e 's/export HISTFILESIZE[ ]*=[ ]*[0-9]*/export HISTFILESIZE=10000/g' /home/iam/.bash_profile)
+  when: bash_filesize.stdout|int != 10000 and bash_filesize.stdout != ""
+
+- name: Place HISTFILESIZE value
+  raw: echo 'export HISTFILESIZE=10000' >> /home/iam/.bash_profile 
+  when: bash_filesize.stdout == ""
+
+#HISTSIZE
+- name: Get HISTSIZE value
+  raw: (less /home/iam/.bash_profile | grep 'HISTSIZE' | grep -o '[0-9]*')
+  register: bash_size
+  ignore_errors: yes
+
+- debug: msg="HISTSIZE value= {{ bash_size.stdout }}"
+
+- name: Replace HISTSIZE value
+  raw: (sed -i -e 's/export HISTSIZE[ ]*=[ ]*[0-9]*/export HISTSIZE=10000/g' /home/iam/.bash_profile)
+  when: bash_size.stdout|int != 10000 and bash_size.stdout != ""
+
+- name: Place HISTSIZE value
+  raw: echo 'export HISTSIZE=10000' >> /home/iam/.bash_profile 
+  when: bash_size.stdout == ""
+
+#source /home/iam/.bash_profile
+- name: source /home/iam/.bash_profile
+  raw: source /home/iam/.bash_profile
+
+
+#################################################################################################
+### Bash profile check for root ###
+#################################################################################################
+
+#HISTTIMEFORMAT
+- name: Get HISTTIMEFORMAT value
+  raw: (less ~/.bash_profile | grep 'HISTTIMEFORMAT' )
+  register: bash_root_time
+  ignore_errors: yes
+  become: yes
+  become_user: "root"
+
+- debug: msg="HISTTIMEFORMAT value= {{ bash_root_time.stdout }}"
+
+- name: Replace HISTTIMEFORMAT value
+  raw:  (sed -i -e 's/export HISTTIMEFORMAT="[a-z%\/ A-Z]*"/export HISTTIMEFORMAT="%d\/%m\/%y %T "/g' ~/.bash_profile)
+  when: bash_root_time.stdout != 'export HISTTIMEFORMAT=\"%d/%m/%y %T \"\r\n' and bash_root_time.stdout != ""
+  become: yes
+  become_user: "root"
+
+- name: Place HISTTIMEFORMAT value
+  raw: echo 'export HISTTIMEFORMAT="%d/%m/%y %T "' >> ~/.bash_profile 
+  when: bash_root_time.stdout == ""
+  become: yes
+  become_user: "root"
+
+#HISTFILESIZE
+- name: Get HISTFILESIZE value
+  raw: (less ~/.bash_profile | grep 'HISTFILESIZE' | grep -o '[0-9]*')
+  register: bash_root_filesize
+  ignore_errors: yes
+  become: yes
+  become_user: "root"
+
+- debug: msg="HISTFILESIZE value= {{ bash_root_filesize.stdout }}"
+
+- name: Replace HISTFILESIZE value
+  raw: (sed -i -e 's/export HISTFILESIZE[ ]*=[ ]*[0-9]*/export HISTFILESIZE=10000/g' ~/.bash_profile)
+  when: bash_root_filesize.stdout|int != 10000 and bash_root_filesize.stdout != ""
+  become: yes
+  become_user: "root"
+
+- name: Place HISTFILESIZE value
+  raw: echo 'export HISTFILESIZE=10000' >> ~/.bash_profile 
+  when: bash_root_filesize.stdout == ""
+  become: yes
+  become_user: "root"
+
+#HISTSIZE
+- name: Get HISTSIZE value
+  raw: (less ~/.bash_profile | grep 'HISTSIZE' | grep -o '[0-9]*')
+  register: bash_root_size
+  ignore_errors: yes
+  become: yes
+  become_user: "root"
+
+- debug: msg="HISTSIZE value= {{ bash_root_size.stdout }}"
+
+- name: Replace HISTSIZE value
+  raw: (sed -i -e 's/export HISTSIZE[ ]*=[ ]*[0-9]*/export HISTSIZE=10000/g' ~/.bash_profile)
+  when: bash_root_size.stdout|int != 10000 and bash_root_size.stdout != ""
+  become: yes
+  become_user: "root"
+
+- name: Place HISTSIZE value
+  raw: echo 'export HISTSIZE=10000' >> ~/.bash_profile 
+  when: bash_root_size.stdout == ""
+  become: yes
+  become_user: "root"
+
+#source ~/.bash_profile
+- name: source ~/.bash_profile
+  raw: source ~/.bash_profile
+  become: yes
+  become_user: "root"
+
+
+#################################################################################################
+### Disable filesystem swapping for all Ping Machines ###
+#################################################################################################
+
+
+- name: Get vm.swappiness value
+  raw: (less /etc/sysctl.conf | grep 'vm.swappiness' | awk '{ print $NF }' )
+  register: swap_val
+
+- debug: msg="vm.swappiness value= {{ swap_val.stdout }}"
+  when: "'PingSyncMachines' in group_names or 'PingDirectoryMachines' in group_names or 'PingProxyMachines' in group_names"
+
+- name: Replace vm.swappiness value
+  raw:  (sed -i -e 's/vm.swappiness[ ]*=[ ]*[0-9]*/vm.swappiness = 0/g' /etc/sysctl.conf)
+  when: "swap_val.stdout|int != 0 and 'PingSyncMachines' in group_names"
+  become: yes
+  become_user: "root"
+
+- name: Place vm.swappiness value
+  raw: echo 'vm.swappiness value = 0' >> /etc/sysctl.conf 
+  when: swap_val.stdout == ""
+  become: yes
+  become_user: "root"
+
+- name: Write sysctl value
+  raw: sysctl -w vm.swappiness=0
+  become: yes
+  become_user: "root"
+  args:
+    chdir: "/etc"
+
+
+#################################################################################################
+### SYSSTAT CHECK ###
+#################################################################################################
+
+- name: Check iostat
+  stat:
+    path: /bin/iostat
+  register: iostat_result
+
+- name: Check mpstat
+  stat:
+    path: /bin/mpstat
+  register: mpstat_result
+
+- name: Check pstack
+  stat:
+    path: /bin/pstack
+  register: pstack_result
+
+- name: Install sysstat
+  command: 'yum install sysstat gdb dstat –y'
+  become: yes
+  become_user: "root"
+  when: "(iostat_result.stat.exists == False and mpstat_result.stat.exists == False and pstack_result.stat.exists == False) and ('PingSyncMachines' in group_names or 'PingDirectoryMachines' in group_names or 'PingProxyMachines' in group_names)"
+
+
+#################################################################################################
+### /opt/app folder and permission Check ###
+#################################################################################################
+
+- name: Test /opt/app folder
+  file:
+    path: /opt/app
+    owner: "{{ func_user }}"
+    group: "{{ func_group }}"
+    mode: 0755
+    state: directory
+  become: yes
+  become_user: "root"
+
+
+#################################################################################################
+### /opt/data folder and permission Check for China ###
+#################################################################################################
+
+- name: Test /opt/data folder
+  file:
+    path: /opt/data
+    owner: "{{ func_user }}"
+    group: "{{ func_group }}"
+    mode: 0755
+    state: directory
+  become: yes
+  become_user: "root"
+  when: "data_center_location == 'BJI'"
+  

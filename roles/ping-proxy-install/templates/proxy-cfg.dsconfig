@@ -1,0 +1,87 @@
+#
+# Status:Creating Locations
+#
+
+{% for item in data_centers %}
+
+dsconfig create-location --location-name {{ item }}
+
+{% endfor %}
+
+
+
+#
+# Status:Updating Failover Locations
+#
+
+dsconfig set-location-prop --location-name {{ data_center_location }}
+
+
+
+#
+# Status:Updating Global Configuration
+#
+
+dsconfig set-global-configuration-prop --set location:{{ data_center_location }}
+
+
+
+#
+# Status:Creating Health Checks
+#
+
+{% for item in groups['PingDirectoryMachines'] %}
+
+dsconfig create-ldap-health-check --check-name {{ item }}:{{ ping_directory_secure_port }}_dc_verizontelematics_dc_com-search-health-check --type search --set enabled:true --set base-dn:{{ base_dn }}
+
+{% endfor %}
+
+
+
+#
+# Status:Creating External Servers
+#
+
+{% for item in groups['PingDirectoryMachines'] %}
+
+dsconfig create-external-server --server-name {{ item }}:{{ ping_directory_secure_port }} --type ping-identity-ds --set server-host-name:{{ item }} --set server-port:{{ ping_directory_secure_port }} --set location:{{ hostvars[item]['data_center_location'] }} --set "bind-dn:cn=Proxy User,cn=Root DNs,cn=config" --set password:{{ ping_root_password }} --set health-check:{{ item }}:{{ ping_directory_secure_port }}_dc_verizontelematics_dc_com-search-health-check --set connection-security:ssl --set key-manager-provider:Null --set trust-manager-provider:JKS
+
+{% endfor %}
+
+
+
+#
+# Status:Creating Load-Balancing Algorithm for dc=verizontelematics,dc=com
+#
+
+
+
+dsconfig create-load-balancing-algorithm --algorithm-name dc_verizontelematics_dc_com-fewest-operations --type fewest-operations --set enabled:true {% for item in groups['PingDirectoryMachines'] %} --set backend-server:{{ item }}:{{ ping_directory_secure_port }} {% endfor %}
+
+
+
+#
+# Status:Creating Request Processor for dc=verizontelematics,dc=com
+#
+
+dsconfig create-request-processor --processor-name dc_verizontelematics_dc_com-req-processor --type proxying --set load-balancing-algorithm:dc_verizontelematics_dc_com-fewest-operations
+
+
+
+#
+# Status:Creating Subtree View for dc=verizontelematics,dc=com
+#
+
+dsconfig create-subtree-view --view-name dc_verizontelematics_dc_com-view --set base-dn:{{ base_dn }} --set request-processor:dc_verizontelematics_dc_com-req-processor
+
+
+
+#
+# Status:Updating Client Connection Policy for dc=verizontelematics,dc=com
+#
+
+dsconfig set-client-connection-policy-prop --policy-name default --add subtree-view:dc_verizontelematics_dc_com-view
+
+
+
+

@@ -1,0 +1,36 @@
+---
+
+##
+# Description: This task configures on disk encryption settings for PDS
+# Dependency: ping-directory-key-creation task should be performed before this in order to have the 
+# pds-encryption-key available
+##
+
+- name: Copy encryption-settings key pin-file
+  template: src=pds-encryption.pin  dest="{{ ping_location }}" mode=0644
+
+- name: Import encryption-settings definition
+  command: './encryption-settings import \
+         --input-file "{{ ping_location }}/pds-encryption-key" \
+         --pin-file "{{ ping_location }}/pds-encryption.pin" \
+         --set-preferred'
+  args:
+    chdir: "{{ ping_bin_location }}"
+  ignore_errors: yes
+
+- name: Start encryption
+  command: './dsconfig set-global-configuration-prop \
+         --set encrypt-data:true \
+         --hostname {{ ansible_fqdn }} \
+         --port {{ ping_directory_port }} \
+         --bindDN {{ ping_directory_root_user }} \
+         --bindPassword {{ ping_root_password }} \
+         --applyChangeTo single-server \
+         --no-prompt'
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+- name: Purge assets
+  command: 'rm pds-encryption-key pds-encryption.pin'
+  args:
+    chdir: "{{ ping_location }}"

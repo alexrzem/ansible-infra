@@ -1,0 +1,82 @@
+---
+
+##
+# Description: This task configures all Core Token Store settings for OpenAM. This task is performed on only one OpenAM
+# instance which is the primary node
+##
+
+- name: Copy cts-ssoadm.batch
+  template: src=cts-ssoadm.batch dest={{openam_location}} mode=0600
+
+- name: Copy root user password file
+  template: src=openam_root_password.pwd dest={{openam_location}} mode=0400
+
+- name: Update server configurations
+  command: "{{ssoadm_location}}/ssoadm update-server-cfg --servername https://{{ item }}:{{ tomcat_secure_port }}/{{openam_context}} -D {{openam_location}}/cts-ssoadm.batch -u amadmin -f {{openam_root_password_location}}"
+  with_items: "{{ groups['OpenAMMachines'] }}"
+
+# Here {{item}} refers to OpenAM Machines which will be incorporated one by one into the items (using 'with_items').
+# These 4 attributes are based on the location of the OpenAM node. Since we are running the configurations from the 
+# primary node of OpenAM, the server location could be different for each node which is why we cannot keep these
+# 4 attributes in the batch file above
+
+- name: Update cts configurations which are based on location of the server
+  command: "{{ssoadm_location}}/ssoadm update-server-cfg \
+            --servername https://{{ item }}:{{ tomcat_secure_port }}/{{openam_context}} \
+            -a \
+            org.forgerock.services.cts.store.root.suffix=ou=famrecords,ou=openam-session,ou=tokens,dc={{ hostvars[item]['data_center_location'] | lower }},dc=cts,dc=verizontelematics,dc=com \
+            org.forgerock.services.cts.store.loginid=cn=oamctsadmin,ou=admins,dc={{ hostvars[item]['data_center_location'] | lower }},dc=cts,dc=verizontelematics,dc=com \
+            org.forgerock.services.cts.store.password={{ opendj_root_password }} \
+            org.forgerock.services.cts.store.directory.name={{ directory_servers_connection_string }} \
+            -u amadmin \
+            -f {{openam_root_password_location}}"
+  with_items: "{{ groups['OpenAMMachines'] }}"
+
+# Here we need to restart openAM after making the above changes. But this role(openam-cts-configure), will run only on one openAM machine.
+# To do this we are using delegate_to functionality. This delegates the control and used for performing various multi-tier deployments.
+# Using with_items we will be providing the servers one by one as input and restart the openAM machines.
+
+- name: Restart all OpenAM instances
+  include_role:
+    name: restart-tomcat
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['OpenAMMachines'] }}"
+
+- name: Purge assets
+  command: 'rm -rf openam_root_password.pwd cts-ssoadm.batch'
+  args:
+    chdir: "{{ openam_location }}"
+
+# Remove old cts container from OpenDJ
+
+- name: Copy over the root user password file
+  template: src=opendj_root_password.pwd  dest={{ opendj_location }} mode=0400
+  delegate_to: "{{ groups['OpenDJMachines'][0] }}"
+
+- name: Copy remove-old-container.ldif
+  template: src=remove-old-container.ldif dest={{opendj_home_location}}/remove-old-container.ldif mode=0600
+  delegate_to: "{{ groups['OpenDJMachines'][0] }}"
+
+- name: Remove old container
+  delegate_to: "{{ groups['OpenDJMachines'][0] }}"
+  command: './ldapmodify \
+          --port {{ opendj_directory_secure_port }} \
+          --bindDN {{ opendj_root_user }} \
+          --bindPasswordFile {{ opendj_root_password_location }} \
+          --keyStorePath {{ keystore_location }} \
+          --keyStorePassword {{ keystore_password }} \
+          --certNickname {{ certificate_nickname }} \
+          --trustAll \
+          --useSsl \
+          --filename {{opendj_home_location}}/remove-old-container.ldif'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Purge remove-old-container.ldif file
+  file: path="{{opendj_home_location}}/remove-old-container.ldif" state=absent
+  delegate_to: "{{ groups['OpenDJMachines'][0] }}"
+
+- name: Purge password file
+  file: path="{{ opendj_location }}/opendj_root_password.pwd" state=absent
+  delegate_to: "{{ groups['OpenDJMachines'][0] }}"
+

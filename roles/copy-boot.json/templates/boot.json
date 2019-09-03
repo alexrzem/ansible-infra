@@ -1,0 +1,26 @@
+{
+  "instance" : "https://{{ansible_fqdn}}:{{tomcat_secure_port}}/{{openam_context}}",
+  "dsameUser" : "cn=dsameuser,ou=DSAME Users,dc=openam,dc=verizontelematics,dc=com",
+  "keystores" : {
+    "default" : {
+      "keyStorePasswordFile" : "/opt/app/installs/forgerock/access/amserver/.storepass",
+      "keyPasswordFile" : "/opt/app/installs/forgerock/access/amserver/.keypass",
+      "keyStoreType" : "JCEKS",
+      "keyStoreFile" : "/opt/app/installs/forgerock/access/amserver/keystore.jceks"
+    }
+  },
+  "configStoreList" : [
+{% for item in config_store_group_boot_json %}
+ {
+    "baseDN" : "{{ config_base_dn }}",
+    "dirManagerDN" : "{{ config_store_admin }}",
+    "ldapHost" : "{{ item }}",
+    "ldapPort" : "{{ opendj_directory_secure_port }}",
+    "ldapProtocol" : "ldaps"
+  }
+{% if config_store_group_boot_json|length != loop.index %}
+  ,
+{% endif %}
+{% endfor %}
+ ]
+}

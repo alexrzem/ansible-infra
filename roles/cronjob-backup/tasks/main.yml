@@ -1,0 +1,96 @@
+---
+
+##
+# Description: This task creates a cron job task to take a backup for the PDS and OpenDJ
+#
+# cron.allow section checks and allows the user to configure cron job
+# crontab section configures the cronjob task
+##
+
+##########################   cron.allow   ######################################################## 
+
+# Only the 'root' user has the permission to view or edit the cron.allow file
+# cron.allow is NOT a default file present in linux. We create the file in /etc and add the users into the file.
+# The users present in the cron.allow file has the previleges to edit the crontab
+
+- name: Check /etc/cron.allow file
+  stat:
+    path: /etc/cron.allow
+  register: cron_allow_result
+  become: yes
+  become_user: "root"
+
+# If the cron.allow file is not present we will be creating cron.allow file adding 'iam' user in it
+- name: Add 'iam' user into cron.allow
+  raw: echo "iam" >> /etc/cron.allow
+  become: yes
+  become_user: "root"
+  when: cron_allow_result.stat.exists == False
+  
+- name: Get content of cron.allow
+  raw: (cat /etc/cron.allow )
+  register: test_cron_allow
+  become: yes
+  become_user: "root"
+  when: cron_allow_result.stat.exists == True
+  
+# If the cron.allow file is present but 'iam' user is not present in it
+- name: Add 'iam' user into cron.allow
+  raw: echo "iam" >> /etc/cron.allow
+  become: yes
+  become_user: "root"
+  when: test_cron_allow.stdout is defined and test_cron_allow.stdout.find('iam') == -1 and cron_allow_result.stat.exists == True
+  
+
+
+##########################   crontab   ########################################################
+
+# Check if there is any cronjob is already configured
+
+- name: Check if any cronjob is already configured
+  command: 'crontab -l'
+  register: crontab_list
+  ignore_errors: yes
+
+- debug: msg="No cronjob was present for the user"
+  when: '"no crontab for iam" in crontab_list.stderr_lines'
+
+# 'debug' is used for printing statements during execution. This is helpful for debugging purposes without halting the playbook
+# Show the contents of the crontab file
+- debug: msg="crontab -l= {{ crontab_list.stdout }}"
+  when: '"no crontab for iam" not in crontab_list.stderr_lines'
+
+- name: Copy over the root user password file
+  template: src=ping_root_password.pwd  dest={{ ping_location }} mode=0400
+
+- name: Copy over the shell script for backup
+  template: src=backup.sh dest={{ping_home_location}}/backups mode=0775
+
+# We are taking PDS full backup everyday at 4 AM in the morning
+
+- name: Cron Job for PDS Full Backup
+  cron:
+    name: PDS - Full Backup
+    minute: "0"
+    hour: "4"
+    job: "/usr/bin/sh {{ping_home_location}}/backups/backup.sh"
+
+# We are taking incremental backup daily for every 3 hours.
+
+- name: Cron Job for PDS Incremental Backup
+  cron:
+    name: PDS - Incremental Backup
+    minute: "0"
+    hour: "*/3"
+    job: "{{ping_bin_location}}/backup --backendID userRoot --incremental --compress --backupDirectory {{ping_home_location}}/backups/pdscurrent/userRoot"
+
+# We are taking OpenDJ full backup everyday at 3 AM in the morning
+
+- name: Cron Job for OpenDJ Full Backup
+  command: ./backup -h {{ansible_fqdn}} --port {{opendj_directory_secure_port}} -j {{ ping_directory_root_password_location }} -X --backupAll --backupDirectory {{ opendj_home_location }}/backups/opendjcurrent --recurringTask "0 3 * * *"
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Purge assets
+  file: path="{{ ping_directory_root_password_location }}/ping_root_password.pwd" state=absent
+

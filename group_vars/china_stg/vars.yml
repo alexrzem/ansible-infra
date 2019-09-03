@@ -1,0 +1,156 @@
+###############################################################################
+# Ping Directory Variables
+###############################################################################
+
+#Role - ping-directory-replication
+#List of all the non-primary PDS machines
+pds_hosts: [ch3lvpds020s.htichina.net]
+ping_directory_backup_location : "/opt/data/backups/pds"
+
+
+###############################################################################
+# OpenDJ Variables
+###############################################################################
+
+#Role - opendj-cts-replication
+location:
+         BJI:
+            key: [ch3lvpds020s.htichina.net]
+                
+cts_hosts: "{{ location[data_center_location].key }}"
+
+#Role - opendj-replication
+opendj_hosts: [ch3lvpds020s.htichina.net]
+opendj_backup_location : "/opt/data/backups/opendj"
+
+
+
+###############################################################################
+# Ping Proxy Variables
+###############################################################################
+
+ping_proxy_primary_host : ch3lvpps010s.htichina.net
+data_centers: [BJI]
+ping_proxy_backup_location : "/opt/data/backups/pps"
+
+
+
+###############################################################################
+# Ping Sync Variables
+###############################################################################
+
+ping_sync_primary_host : ch3lvpss010s.htichina.net
+
+
+
+###############################################################################
+# OpenAM Variables
+###############################################################################
+
+lbcookiename : STGamlbcookie
+amcookiename : STGamID
+cookie_domain : htichina.net
+openam_encryption_key : k3xtaRvZ9bEZfuxqc8QDGZ7ueCwRBL9q
+openam_certificate_nickname : server-cert
+
+#Role - openam-cts-configure
+beijing_servers_connection_string: ch3lvpds010s.htichina.net:2636,ch3lvpds020s.htichina.net:2636
+
+directory_servers_location:
+         BJI:
+            key: "{{ beijing_servers_connection_string }}"
+       
+directory_servers_connection_string: "{{ directory_servers_location[hostvars[item]['data_center_location']].key }}"
+
+#Role - openam-multiple-config-store
+primary_config_store_directory_server_locations:
+         BJI:
+            key: ch3lvpds010s.htichina.net
+
+primary_config_store_directory_server: "{{ primary_config_store_directory_server_locations[hostvars[item]['data_center_location']].key  }}"
+
+config_store_directory_servers_location:
+         BJI:
+            key: [ch3lvpds010s.htichina.net, ch3lvpds020s.htichina.net]
+       
+config_store_group: "{{ config_store_directory_servers_location[hostvars[item]['data_center_location']].key }}"
+config_store_group_boot_json: "{{ config_store_directory_servers_location[data_center_location].key }}"
+
+
+#Role - openamconf.properties (openam-install)
+bji_directory_server: ch3lvpds010s.htichina.net
+
+directory_server_location:
+         BJI:
+            key: "{{ bji_directory_server }}"
+       
+directory_server: "{{ directory_server_location[data_center_location].key }}"
+
+#Role - openam-realm-configure & openamconf.properties (openam-install)
+userstore_host : pds-stg.htichina.net
+
+#Role - openam-site-configure
+beijing_primary_site_url: https://oam-stg.htichina.net:8443/amserver
+
+primary_site_url_location:
+         BJI:
+            key: "{{ beijing_primary_site_url }}"
+       
+primary_site_url: "{{ primary_site_url_location[data_center_location].key }}"
+global_site_url: https://oam-stg.htichina.net:8443/amserver
+
+
+beijing_site_name: oambjistg
+
+site_location:
+         BJI:
+            key: "{{ beijing_site_name }}"
+       
+site_name: "{{ site_location[hostvars[item]['data_center_location']].key }}"
+
+sites: ["{{ beijing_site_name }}"]
+
+primary_site_location:
+         oambjistg:
+            key: "{{ beijing_primary_site_url }}"
+
+primary_site_creation_url: "{{ primary_site_location[item].key }}"
+
+
+
+###############################################################################
+# Binary Download URL
+###############################################################################
+
+tomcat_download_url : http://10.198.106.198:8081/artifactory/infrastructure/
+tomcat_binary : apache-tomcat-8.5.15
+tomcat_binary_ext : .zip
+openam_download_url : http://10.198.106.198:8081/artifactory/infrastructure/IAM/AM/5.1.0/
+openam_binary : AM-5.1.0
+openam_binary_ext : .war
+ssoconfigurator_download_url : http://10.198.106.198:8081/artifactory/infrastructure/IAM/AM/5.1.0/
+ssoconfigurator_binary : SSOConfiguratorTools-5.1.0
+ssoconfigurator_binary_ext : .zip
+opendj_download_url : http://10.198.106.198:8081/artifactory/infrastructure/IAM/DS/5.0.0/
+opendj_binary : DS-5.0.0
+opendj_binary_ext : .zip
+ping_directory_download_url : http://10.198.106.198:8081/artifactory/infrastructure/IAM/PingDirectory/6.0.1.2/
+ping_proxy_download_url : http://10.198.106.198:8081/artifactory/infrastructure/IAM/PingDirectoryProxy/6.0.1.2/
+ping_sync_download_url : http://10.198.106.198:8081/artifactory/infrastructure/IAM/PingDataSync/6.0.1.2/
+ping_metrics_download_url : http://10.198.106.198:8081/artifactory/infrastructure/IAM/PingDataMetrics/6.0.1.2/
+ssoadmin_download_url : http://10.198.106.198:8081/artifactory/infrastructure/IAM/AM/5.1.0/
+ssoadmin_binary : SSOAdminTools-5.1.0
+ssoadmin_binary_ext : .zip
+jdk_download_url : http://10.198.106.198:8081/artifactory/infrastructure/
+jdk_binary : jdk-8u121-linux-x64.tar
+jdk_binary_ext : .gz
+jdk_binary_version : jdk1.8.0_121
+jce_policy_download_url : http://10.198.106.198:8081/artifactory/infrastructure/
+jce_policy_binary : jce_policy-8
+jce_policy_binary_ext : .zip
+status_extension_name : com.unboundid.ops.status-servlet-1.1.2.zip
+ds_plugin_pwp_extension_name : com.pingidentity.ds-plugin-pwp-user-state-1.3.0.4.zip
+ds_plugin_oid_extension_name : com.pingidentity.ds-plugin-oid-compat-bind-result-code-map-0.2.1.1.zip
+pds_status_extension_url : http://10.198.106.198:8081/artifactory/infrastructure/IAM/{{ status_extension_name }}
+pds_ds_plugin_pwp_extension_url : http://10.198.106.198:8081/artifactory/infrastructure/IAM/PingIdentity/1.3.0.4/{{ ds_plugin_pwp_extension_name }}
+pds_ds_plugin_oid_extension_url : http://10.198.106.198:8081/artifactory/infrastructure/IAM/PingIdentity/0.2.1.1/{{ ds_plugin_oid_extension_name }}

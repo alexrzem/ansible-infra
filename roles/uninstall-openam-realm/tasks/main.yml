@@ -1,0 +1,25 @@
+---
+
+- name: Remove the FORDAPP Realm on OpenAM
+  command: ./ssoadm delete-realm -e /{{ ford_realm_name }} -u amadmin -f {{openam_root_password_location}}
+  args:
+    chdir: "{{ssoadm_location}}"
+  register: ssoadm_result
+
+- name: Remove the HUMAPP Realm on OpenAM
+  command: ./ssoadm delete-realm -e /{{ hum_realm_name }} -u amadmin -f {{openam_root_password_location}}
+  args:
+    chdir: "{{ssoadm_location}}"
+  register: ssoadm_result
+
+- name: Remove the MBPURLAPP Realm on OpenAM
+  command: ./ssoadm delete-realm -e /{{ mercedes_benz_realm_name }} -u amadmin -f {{openam_root_password_location}}
+  args:
+    chdir: "{{ssoadm_location}}"
+  register: ssoadm_result
+
+- name: Remove the VWPURLAPP Realm on OpenAM
+  command: ./ssoadm delete-realm -e /{{ volkswagen_realm_name }} -u amadmin -f {{openam_root_password_location}}
+  args:
+    chdir: "{{ssoadm_location}}"
+  register: ssoadm_result

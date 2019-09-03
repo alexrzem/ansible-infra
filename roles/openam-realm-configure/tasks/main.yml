@@ -1,0 +1,81 @@
+---
+
+##
+# Description: This task configures all the realms in the OpenAM. This task is performed on only one
+# OpenAM instance which is the primary node
+##
+
+- name: Copy over the root user password file
+  template: src=openam_root_password.pwd  dest={{openam_location}} mode=0400
+
+# The "item" variable is repeated each time with the items from the realms list. realms is defined in 
+# infra-vars.yml
+- name: Configure the Realms on OpenAM
+  command: ./ssoadm create-realm -e /{{ item }} -u amadmin -f {{openam_root_password_location}}
+  args:
+    chdir: "{{ssoadm_location}}"
+  with_items: "{{ realms }}"
+
+- name: Delete the present datastore in the Realms
+  command: ./ssoadm delete-datastores -e /{{ item }} -m OpenDJ -u amadmin -f {{openam_root_password_location}}
+  args:
+    chdir: "{{ssoadm_location}}"
+  with_items: "{{ realms }}"
+
+- name: Copy fordapp_datastore.batch
+  template: src=fordapp_datastore.batch dest={{openam_location}}/fordapp_datastore.batch mode=0600 force=yes
+
+- name: Copy humapp_datastore.batch
+  template: src=humapp_datastore.batch dest={{openam_location}}/humapp_datastore.batch mode=0600 force=yes
+  
+- name: Copy mbpurlapp_datastore.batch
+  template: src=mbpurlapp_datastore.batch dest={{openam_location}}/mbpurlapp_datastore.batch mode=0600 force=yes
+
+- name: Copy vwpurlapp_datastore.batch
+  template: src=vwpurlapp_datastore.batch dest={{openam_location}}/vwpurlapp_datastore.batch mode=0600 force=yes
+
+- name: Copy datastore config batch file
+  template: src=create-datastore.batch dest={{openam_location}} mode=0600
+
+- name: Copy datastore attributes file
+  template: src=update-datastore-attributes dest={{openam_location}} mode=0600
+
+- name: Create datastore for the Realms
+  command: "./ssoadm do-batch -Z {{openam_location}}/create-datastore.batch -u amadmin -f {{openam_root_password_location}} -c"
+  args: 
+    chdir: "{{ssoadm_location}}"
+
+- name: Update datastore attributes in FORDAPP
+  command: "./ssoadm update-datastore -e /FORDAPP -m PDS_FORDUS -D {{openam_location}}/update-datastore-attributes -u amadmin -f {{openam_root_password_location}}"
+  args: 
+    chdir: "{{ssoadm_location}}"
+
+- name: Update datastore attriubutes in HUMAPP
+  command: "./ssoadm update-datastore -e /HUMAPP -m PDS_VVUS -D {{openam_location}}/update-datastore-attributes -u amadmin -f {{openam_root_password_location}}"
+  args: 
+    chdir: "{{ssoadm_location}}"
+
+- name: Update datastore attributes in MBPURLAPP
+  command: "./ssoadm update-datastore -e /MBPURLAPP -m PDS_MBUS -D {{openam_location}}/update-datastore-attributes -u amadmin -f {{openam_root_password_location}}"
+  args: 
+    chdir: "{{ssoadm_location}}"
+
+- name: Update datastore attributes in VWPURLAPP
+  command: "./ssoadm update-datastore -e /VWPURLAPP -m PDS_VWUS -D {{openam_location}}/update-datastore-attributes -u amadmin -f {{openam_root_password_location}}"
+  args: 
+    chdir: "{{ssoadm_location}}"
+
+- name: Update datastore configuration
+  command: "./ssoadm do-batch -Z {{openam_location}}/{{item}} -u amadmin -f {{openam_root_password_location}} -c"
+  args: 
+    chdir: "{{ssoadm_location}}"
+  with_items: "{{realm_datastore_batch}}"
+
+- name: Purge assets
+  command: 'rm -rf openam_root_password.pwd create-datastore.batch fordapp_datastore.batch humapp_datastore.batch mbpurlapp_datastore.batch vwpurlapp_datastore.batch update-datastore-attributes'
+  args:
+    chdir: "{{ openam_location }}"
+
+
+
+

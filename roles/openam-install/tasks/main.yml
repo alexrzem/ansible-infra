@@ -1,0 +1,130 @@
+---
+
+##
+# Description: This task installs tomcat server for OpenAM and configures it with the configurator tool
+# using the openamconf.properties
+##
+
+- name: Create directory for Forgerock
+  file: state=directory path={{ forgerock_location }} 
+
+- name: Download Tomcat
+  get_url: url={{ tomcat_download_url }}{{ tomcat_binary }}{{ tomcat_binary_ext }} dest={{ forgerock_location }}
+
+- name: Unzip Tomcat
+  command: '{{ unzip }} {{ tomcat_binary }}{{ tomcat_binary_ext }}'
+  args:
+    chdir: "{{ forgerock_location }}"
+
+- name: Rename tomcat folder
+  command: 'mv {{ tomcat_binary }} tomcat/'
+  args:
+    chdir: "{{ forgerock_location }}"
+
+- name: Delete tomcat zip
+  file: path="{{ forgerock_location }}/{{ tomcat_binary }}{{ tomcat_binary_ext }}" state=absent
+
+- name: Download OpenAM war
+  get_url: url={{ openam_download_url }}{{ openam_binary }}{{ openam_binary_ext }} dest={{ forgerock_location }} validate_certs=no
+
+- name: Update ownership of war in the folder
+  file: path={{ forgerock_location }}/{{ openam_binary }}{{ openam_binary_ext }} mode=0644
+
+- name: Rename and Move OpenAM war
+  command: 'mv {{ openam_binary }}{{ openam_binary_ext }} {{ tomcat_server }}/webapps/{{ openam_context }}.war'
+  args:
+    chdir: "{{ forgerock_location }}"
+
+- name: Update Tomcat executables permissions
+  file: path={{ tomcat_server }}/bin/startup.sh mode=0755
+
+- name: Update Tomcat executables permissions
+  file: path={{ tomcat_server }}/bin/shutdown.sh mode=0755
+
+- name: Update Tomcat executables permissions
+  file: path={{ tomcat_server }}/bin/catalina.sh mode=0755
+
+- name: Delete the existing server.xml file
+  file: path="{{ tomcat_server }}/conf/server.xml" state=absent
+
+- name: Copy the server.xml file to conf
+  template: src=server.xml dest={{ tomcat_server }}/conf/server.xml force=yes  mode=0644
+
+- name: Copy the web.xml file to conf
+  template: src=web.xml dest={{ tomcat_server }}/conf/web.xml force=yes  mode=0644
+
+- name: Copy the context.xml file to conf
+  template: src=context.xml dest={{ tomcat_server }}/conf/context.xml force=yes  mode=0644
+
+- name: Copy the setenv.sh file to bin
+  template: src=setenv.sh dest={{ tomcat_server }}/bin/setenv.sh mode=0755
+
+- name: Create directory for Tomcat Logs
+  file: state=directory path={{ tomcat_log_location }}
+
+- name: Copy the logging.properties to conf folder in tomcat
+  template: src=logging.properties dest={{ tomcat_server }}/conf/logging.properties force=yes
+
+- name: Start Server Tomcat
+  shell: "nohup {{ tomcat_server }}/bin/startup.sh"
+
+#- name: Check if URL for server instance is available
+#  uri: url=http://{{ansible_fqdn}}{{server_port}}/{{openam_war_server}}/UI/Login
+#  register: result
+#  until: result.status == 200 or result.status == 302
+#  retries: 12
+#  delay: 10
+
+#Or instead use something like this
+- name: Waiting for server startup 
+  wait_for:
+    host: "{{ ansible_fqdn }}"
+    port: "{{ tomcat_secure_port }}"
+    delay: 2
+    state: started
+
+- name: Copy openamconf.properties
+  template: src=openamconf.properties dest={{ tomcat_server }}
+  
+- name: Create directory for openam softwares
+  file: state=directory path={{ openam_tools }}
+
+- name: Create directory for openam base directory
+  file: state=directory path={{ openam_base_dir }}
+
+- name: Download OpenAM SSO Configurator tool
+  get_url: url={{ ssoconfigurator_download_url }}{{ ssoconfigurator_binary }}{{ ssoconfigurator_binary_ext }} dest={{ openam_tools }}
+
+- name: Unzip SSO Configurator tool zip
+  command: '{{ unzip }} {{ ssoconfigurator_binary }}{{ ssoconfigurator_binary_ext }}'
+  args:
+    chdir: "{{ openam_tools }}"
+
+- name: Update ownership of SSO Configurator
+  file: path={{ openam_tools }}/openam-configurator-tool-{{ openam_version }}.jar mode=0775
+
+- name: Run configurator tool
+  shell: "{{ jdk_location }}/bin/java -jar {{ openam_tools }}/openam-configurator-tool-{{ openam_version }}.jar --file {{ tomcat_server }}/openamconf.properties --acceptLicense"
+  ignore_errors: yes
+
+- name: Delete openamconf.properties file
+  file: path={{ tomcat_server }}/openamconf.properties state=absent
+
+- name: Copy the error.jsp file
+  template: src=error.jsp dest={{ tomcat_server }}/webapps/{{ openam_context }} force=yes  mode=0644
+
+- name: Delete docs in tomcat webapps
+  file: path={{ tomcat_server }}/webapps/docs state=absent
+
+- name: Delete examples in tomcat webapps
+  file: path={{ tomcat_server }}/webapps/examples state=absent
+
+- name: Delete host-manager in tomcat webapps
+  file: path={{ tomcat_server }}/webapps/host-manager state=absent
+
+- name: Delete manager in tomcat webapps
+  file: path={{ tomcat_server }}/webapps/manager state=absent
+
+- name: Delete ROOT in tomcat webapps
+  file: path={{ tomcat_server }}/webapps/ROOT state=absent
+

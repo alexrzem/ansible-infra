@@ -1,0 +1,12 @@
+# Perform configurations on just the primary Ping Directory Machine
+- name: Temp Test
+  hosts: PingProxyMachines[0]
+  tags: [ temp ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: temp }

@@ -1,0 +1,72 @@
+---
+
+##
+# Description: This task configures all settings for OpenAM. This task is performed on only one OpenAM
+# instance which is the primary node
+#
+# This task in return calls the openam-multiple-config-store task in order to configure multiple config
+# into each and every instance of OpenAM
+##
+
+- name: Copy config.dat properties file
+  template: src=config.dat dest={{openam_location}}/config.dat mode=0600
+
+- name: Copy root user password file
+  template: src=openam_root_password.pwd dest={{openam_location}} mode=0400
+
+# Here {{item}} refers to OpenAM Machines which will be incorporated one by one into the items (using 'with_items')
+
+- name: Change OpenAM configurations
+  command: "{{ssoadm_location}}/ssoadm update-server-cfg --servername https://{{ item }}:{{ tomcat_secure_port }}/{{openam_context}} -D {{openam_location}}/config.dat -u amadmin -f {{openam_root_password_location}}"
+  with_items: "{{ groups['OpenAMMachines'] }}"
+
+# Here we need to copy LDAP.xml file in all the OpenAM machines. But this role(openam-configure), will run only on one openAM machine.
+# To do this we are using delegate_to functionality. This delegates the control and used for performing various multi-tier deployments.
+# Using with_items we will be providing the servers one by one as input and copy the LDAP.xml in all the machines.
+
+- name: Replace the callbacks LDAP.xml to config/auth/default in amserver folder
+  template: src=LDAP.xml dest={{tomcat_server}}/webapps/amserver/config/auth/default mode=640 force=yes
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['OpenAMMachines'] }}"
+
+- name: Replace the callbacks LDAP.xml to config/auth/default_en in amserver folder
+  template: src=LDAP.xml dest={{tomcat_server}}/webapps/amserver/config/auth/default_en mode=640 force=yes
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['OpenAMMachines'] }}"
+
+# After copying the LDAP.xml we need to restart OpenAM. We are using the same delegate_to functionality to restart the openAM instances.
+
+- name: Restart all OpenAM instances
+  include_role:
+    name: restart-tomcat
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['OpenAMMachines'] }}"
+
+- name: Copy opendj_root_password file
+  template: src=opendj_root_password.pwd dest={{ ssoadm_location }} mode=0400
+
+- name: Encrypt the opendj root password with openam
+  shell: "./ampassword --encrypt opendj_root_password.pwd "
+  args:
+    chdir: "{{ ssoadm_location }}"
+  register: am_encrypted_password
+
+- name: Configure multiple config stores on all OpenAM instances
+  include_role:
+    name: openam-multiple-config-store
+  with_items: "{{ groups['OpenAMMachines'] }}"
+
+- name: Change OpenAM log rotation and retention configurations
+  command: "{{ssoadm_location}}/ssoadm set-attr-defs --servicename iPlanetAMLoggingService --schematype global --attributevalues iplanet-am-logging-num-hist-file={{ openam_log_retention_no }} iplanet-am-logging-location={{ openam_log_location }} --adminid amadmin --password-file {{openam_root_password_location}}"
+
+- name: Change OpenAM log rotation and retention configurations
+  command: "{{ssoadm_location}}/ssoadm set-sub-cfg --servicename AuditService --subconfigname "Global JSON Handler" --operation set --attributevalues location={{ openam_log_location }} retentionMaxNumberOfHistoryFiles={{ openam_log_retention_no }} --adminid amadmin --password-file {{openam_root_password_location}}"
+
+- name: Purge assets
+  command: 'rm -rf openam_root_password.pwd config.dat server-config.xml'
+  args:
+    chdir: "{{ openam_location }}"
+
+- name: Purge assets
+  file: path="{{ ssoadm_location }}/opendj_root_password.pwd" state=absent
+

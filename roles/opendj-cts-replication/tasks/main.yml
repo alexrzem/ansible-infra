@@ -1,0 +1,51 @@
+---
+
+##
+# Description: This task configures replication of the Core Token Store backend among all the OpenDJ
+# instances within a data center. This task should be performed only the primary node of OpenDJ
+# of each data center
+##
+
+- name: Copy over the root user password file
+  template: src=opendj_root_password.pwd  dest={{ opendj_location }} mode=0400
+
+# Here {{item}} refers to OpenAM Machines which will be incorporated one by one into the items (using 'with_items')
+
+- name: 'Replication of cts store'
+  command: './dsreplication configure \
+          --host1 {{ ansible_fqdn }} \
+          --port1 {{ opendj_directory_secure_port }} \
+          --bindDn1 {{ opendj_root_user }} \
+          --bindPasswordFile1 {{ opendj_root_password_location }} \
+          --host2 {{ item }} \
+          --port2 {{ opendj_directory_secure_port }} \
+          --bindDn2 {{ opendj_root_user }} \
+          --bindPasswordFile2 {{ opendj_root_password_location }} \
+          --replicationPort1 {{ opendj_directory_replication_port }} \
+          --secureReplication1 \
+          --replicationPort2 {{ opendj_directory_replication_port }} \
+          --secureReplication2 \
+          --baseDn {{ cts_base_dn }} \
+          --adminUid admin \
+          --adminPasswordFile {{ opendj_root_password_location }} \
+          --no-prompt'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+  with_items: "{{ cts_hosts }}"
+
+- name: 'Initialize replication'
+  command: './dsreplication initialize-all \
+          --adminUid admin \
+          --adminPasswordFile {{ opendj_root_password_location }} \
+          --trustAll \
+          --no-prompt \
+          --baseDn {{ cts_base_dn }} \
+          --hostname {{ ansible_fqdn }} \
+          --port {{ opendj_directory_secure_port }}'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Purge assets
+  command: 'rm -rf opendj_root_password.pwd'
+  args:
+    chdir: "{{ opendj_location }}"

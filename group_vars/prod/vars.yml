@@ -1,0 +1,174 @@
+###############################################################################
+# Ping Directory Variables
+###############################################################################
+
+#Role - ping-directory-replication
+pds_hosts: [dallvpdsap020p.vtitel.net, dallvpdsap030p.vtitel.net, mialvpdsap010p.vtitel.net, mialvpdsap020p.vtitel.net, mialvpdsap030p.vtitel.net]
+ping_directory_backup_location : "{{ping_home_location}}/backups/pds"
+
+
+###############################################################################
+# OpenDJ Variables
+###############################################################################
+
+#Role - opendj-cts-replication
+location:
+         DAL:
+            key: [dallvpdsap020p.vtitel.net,dallvpdsap030p.vtitel.net]
+         MIA:
+            key: [mialvpdsap020p.vtitel.net,mialvpdsap030p.vtitel.net]
+       
+cts_hosts: "{{ location[data_center_location].key }}"
+
+#Role - opendj-replication
+opendj_hosts: [dallvpdsap020p.vtitel.net, dallvpdsap030p.vtitel.net, mialvpdsap010p.vtitel.net, mialvpdsap020p.vtitel.net, mialvpdsap030p.vtitel.net]
+opendj_backup_location : "{{ opendj_home_location }}/backups/opendj"
+
+
+
+###############################################################################
+# Ping Proxy Variables
+###############################################################################
+
+ping_proxy_primary_host : dallvppsap010p.vtitel.net
+data_centers: [DAL,MIA]
+ping_proxy_backup_location : "{{ ping_home_location }}/backups/pps"
+
+
+
+###############################################################################
+# Ping Sync Variables
+###############################################################################
+
+ping_sync_primary_host : dallvpssap010p.vtitel.net
+
+
+
+###############################################################################
+# OpenAM Variables
+###############################################################################
+
+lbcookiename : amlbcookie
+amcookiename : amID
+cookie_domain : vtitel.net
+openam_encryption_key : 9cy4CJ7ZCLj7p58sfYN4Wp4t4du8TUME
+openam_certificate_nickname : fed-cert
+
+#Role - openam-cts-configure
+dallas_servers_connection_string: dallvpdsap010p.vtitel.net:2636,dallvpdsap020p.vtitel.net:2636,dallvpdsap030p.vtitel.net:2636
+miami_servers_connection_string: mialvpdsap010p.vtitel.net:2636,mialvpdsap020p.vtitel.net:2636,mialvpdsap030p.vtitel.net:2636
+
+directory_servers_location:
+         DAL:
+            key: "{{ dallas_servers_connection_string }}"
+         MIA:
+            key: "{{ miami_servers_connection_string }}"
+       
+directory_servers_connection_string: "{{ directory_servers_location[hostvars[item]['data_center_location']].key }}"
+
+#Role - openam-multiple-config-store
+primary_config_store_directory_server_locations:
+         DAL:
+            key: dallvpdsap010p.vtitel.net
+         MIA:
+            key: mialvpdsap010p.vtitel.net
+
+primary_config_store_directory_server: "{{ primary_config_store_directory_server_locations[hostvars[item]['data_center_location']].key  }}"
+
+config_store_directory_servers_location:
+         DAL:
+            key: [dallvpdsap010p.vtitel.net, dallvpdsap020p.vtitel.net, dallvpdsap030p.vtitel.net]
+         MIA:
+            key: [mialvpdsap010p.vtitel.net, mialvpdsap020p.vtitel.net, mialvpdsap030p.vtitel.net]
+       
+config_store_group: "{{ config_store_directory_servers_location[hostvars[item]['data_center_location']].key }}"
+config_store_group_boot_json: "{{ config_store_directory_servers_location[data_center_location].key }}"
+
+
+#Role - openamconf.properties (openam-install)
+dal_directory_server: dallvpdsap010p.vtitel.net
+mia_directory_server: mialvpdsap010p.vtitel.net
+
+directory_server_location:
+         DAL:
+            key: "{{ dal_directory_server }}"
+         MIA:
+            key: "{{ mia_directory_server }}"
+       
+directory_server: "{{ directory_server_location[data_center_location].key }}"
+
+#Role - openam-realm-configure & openamconf.properties (openam-install)
+userstore_host : pds.vtitel.net
+
+#Role - openam-site-configure
+dallas_primary_site_url: https://oam-dal.vtitel.net:8443/amserver
+miami_primary_site_url: https://oam-mia.vtitel.net:8443/amserver
+
+primary_site_url_location:
+         DAL:
+            key: "{{ dallas_primary_site_url }}"
+         MIA:
+            key: "{{ miami_primary_site_url }}"
+       
+primary_site_url: "{{ primary_site_url_location[data_center_location].key }}"
+global_site_url: https://oam.vtitel.net:8443/amserver
+
+
+dallas_site_name: oamdalprod
+miami_site_name: oammiaprod
+site_location:
+         DAL:
+            key: "{{ dallas_site_name }}"
+         MIA:
+            key: "{{ miami_site_name }}"
+       
+site_name: "{{ site_location[hostvars[item]['data_center_location']].key }}"
+
+sites: ["{{ dallas_site_name }}","{{ miami_site_name }}"]
+
+primary_site_location:
+         oamdalprod:
+            key: "{{ dallas_primary_site_url }}"
+         oammiaprod:
+            key: "{{ miami_primary_site_url }}"
+
+primary_site_creation_url: "{{ primary_site_location[item].key }}"
+
+
+
+###############################################################################
+# Binary Download URL
+###############################################################################
+
+tomcat_download_url : http://10.254.19.44:8081/artifactory/infrastructure/
+tomcat_binary : apache-tomcat-8.5.15
+tomcat_binary_ext : .zip
+openam_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/AM/5.1.0/
+openam_binary : AM-5.1.0
+openam_binary_ext : .war
+ssoconfigurator_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/AM/5.1.0/
+ssoconfigurator_binary : SSOConfiguratorTools-5.1.0
+ssoconfigurator_binary_ext : .zip
+opendj_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/DS/5.0.0/
+opendj_binary : DS-5.0.0
+opendj_binary_ext : .zip
+ping_directory_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/PingDirectory/6.0.1.2/
+ping_proxy_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/PingDirectoryProxy/6.0.1.2/
+ping_sync_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/PingDataSync/6.0.1.2/
+ping_metrics_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/PingDataMetrics/6.0.1.2/
+ssoadmin_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/AM/5.1.0/
+ssoadmin_binary : SSOAdminTools-5.1.0
+ssoadmin_binary_ext : .zip
+jdk_download_url : http://10.254.19.44:8081/artifactory/infrastructure/
+jdk_binary : jdk-8u121-linux-x64.tar
+jdk_binary_ext : .gz
+jdk_binary_version : jdk1.8.0_121
+jce_policy_download_url : http://10.254.19.44:8081/artifactory/infrastructure/
+jce_policy_binary : jce_policy-8
+jce_policy_binary_ext : .zip
+status_extension_name : com.unboundid.ops.status-servlet-1.1.2.zip
+ds_plugin_pwp_extension_name : com.pingidentity.ds-plugin-pwp-user-state-1.3.0.4.zip
+ds_plugin_oid_extension_name : com.pingidentity.ds-plugin-oid-compat-bind-result-code-map-0.2.1.1.zip
+pds_status_extension_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/UnboundId/1.1.2/{{ status_extension_name }}
+pds_ds_plugin_pwp_extension_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/PingIdentity/1.3.0.4/{{ ds_plugin_pwp_extension_name }}
+pds_ds_plugin_oid_extension_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/PingIdentity/0.2.1.1/{{ ds_plugin_oid_extension_name }}

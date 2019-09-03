@@ -1,0 +1,20 @@
+---
+
+- name: Stopping Ping Metrics
+  command: "./stop-metrics-engine"
+  failed_when: not "'Running' in /opt/app/installs/pdm/logs/server.status"
+  args:
+    chdir: "{{ ping_metrics_bin }}"
+
+- name: Uninstall Ping Metrics
+  command: "./uninstall --cli --remove-all --external-files --no-prompt --quiet"
+  args:
+    chdir: "{{ ping_metrics_home }}"
+
+- name: Delete Ping Metrics Folders
+  command: "rm -rf pdm/"
+  args:
+    chdir: "{{ ping_location }}"
+    
+- name: Delete the logs folder
+  file: path="{{ ping_metrics_log_location }}" state=absent

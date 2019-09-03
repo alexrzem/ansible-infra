@@ -1,0 +1,12 @@
+
+- name: Tomcat Hardening in Preprod
+  hosts: mialvoamap030u.vtitel.net
+  tags: [ test ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: test }

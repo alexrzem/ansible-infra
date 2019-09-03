@@ -1,0 +1,26 @@
+---
+
+- name: Stopping Ping Proxy
+  command: "./stop-proxy"
+  failed_when: not "'Running' in {{ ping_proxy_home }}/logs/server.status"
+  args:
+    chdir: "{{ ping_proxy_bin }}"
+
+- name: Uninstall Ping Proxy
+  command: "./uninstall --cli --remove-all --external-files --no-prompt --quiet"
+  args:
+    chdir: "{{ ping_proxy_home }}"
+
+- name: Delete Ping Proxy Folders
+  command: "rm -rf pps/"
+  args:
+    chdir: "{{ ping_location }}"
+
+- name: Delete the installs folder
+  file: path="/opt/app/installs" state=absent
+
+- name: Delete the logs folder
+  file: path="{{ ping_proxy_log_location }}" state=absent
+
+- name: Delete the backups folder
+  file: path="{{ ping_proxy_backup_location }}" state=absent

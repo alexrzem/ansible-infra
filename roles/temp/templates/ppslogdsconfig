@@ -1,0 +1,25 @@
+#
+#Log configurations
+#
+
+dsconfig set-log-rotation-policy-prop --policy-name "Size Limit Rotation Policy" --set "file-size-limit:200 mb"
+
+dsconfig set-log-publisher-prop --publisher-name "Debug ACI Logger" --set log-file:{{ ping_proxy_log_location }}/debug-aci --set log-file-permissions:640 --set enabled:false
+
+dsconfig set-log-publisher-prop --publisher-name "Expensive Operations Access Logger" --set log-file:{{ ping_proxy_log_location }}/expensive-ops --set log-file-permissions:640 --set enabled:false
+
+dsconfig set-log-publisher-prop --publisher-name "Failed Operations Access Logger" --set log-file:{{ ping_proxy_log_location }}/failed-ops --set log-file-permissions:640 --set enabled:true --remove "rotation-policy:24 Hours Time Limit Rotation Policy" --remove "retention-policy:Size Limit Retention Policy"
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Access Logger" --set log-file:{{ ping_proxy_log_location }}/access --set log-file-permissions:640 --set enabled:true --remove "rotation-policy:24 Hours Time Limit Rotation Policy"
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Audit Logger" --set log-file:{{ ping_proxy_log_location }}/audit --set log-file-permissions:640 --set enabled:false
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Error Logger" --set log-file:{{ ping_proxy_log_location }}/errors --set log-file-permissions:640 --set enabled:true --remove "retention-policy:7 Days Time Limit Rotation Policy"
+
+dsconfig set-log-publisher-prop --publisher-name "JSON Access Logger" --set log-file:{{ ping_proxy_log_location }}/access.json --set log-file-permissions:640 --set enabled:false
+
+dsconfig set-log-publisher-prop --publisher-name "JSON Error Logger" --set log-file:{{ ping_proxy_log_location }}/errors.json --set log-file-permissions:640 --set enabled:false
+
+dsconfig set-log-publisher-prop --publisher-name "Successful Searches with No Entries Returned" --set log-file:/{{ ping_proxy_log_location }}/searches-returning-no-entries --set log-file-permissions:640 --set enabled:false
+
+

@@ -1,0 +1,45 @@
+---
+
+##
+# Description: This task installs JDK
+##
+
+- name: Download jdk to host
+  get_url: url={{ jdk_download_url }}{{ jdk_binary }}{{ jdk_binary_ext }} dest="{{ app_location }}"
+
+- name: Gunzip the jdk Gunzip
+  command: 'gunzip {{ jdk_binary }}{{ jdk_binary_ext }}'
+  args:
+    chdir: "{{ app_location }}"
+
+- name: Tar the jdk Tar
+  command: 'tar -xvf {{ jdk_binary }}'
+  args:
+    chdir: "{{ app_location }}"
+
+- name: Delete the jdk tar
+  file: path="{{ app_location }}{{ jdk_binary }}" state=absent
+
+- name: Rename jdk
+  command: 'mv {{ jdk_binary_version }}/ jdk/'
+  args:
+    chdir: "{{ app_location }}"
+
+- name: Download jce policy 8
+  get_url: url={{ jce_policy_download_url }}{{ jce_policy_binary }}{{ jce_policy_binary_ext }} dest="{{ app_location }}"
+
+- name: Unzip jce policy
+  command: '{{ unzip }} {{ jce_policy_binary }}{{ jce_policy_binary_ext }}'
+  args:
+    chdir: "{{ app_location }}"
+
+- name: Delete the jce policy zip
+  file: path="{{ app_location }}{{ jce_policy_binary }}{{ jce_policy_binary_ext }}" state=absent
+
+- name: Copy the policy file
+  shell: "cp *.jar {{ jdk_location }}/lib/security/"
+  args:
+    chdir: "{{ app_location }}/UnlimitedJCEPolicyJDK8/"
+
+- name: Delete the UnlimitedJCEPolicyJDK8 folder
+  file: path="{{ app_location }}/UnlimitedJCEPolicyJDK8/" state=absent

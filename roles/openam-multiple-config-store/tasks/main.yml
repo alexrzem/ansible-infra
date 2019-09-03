@@ -1,0 +1,15 @@
+---
+
+##
+# Description: This task configures multiple config stores for each instance of OpenAM. This task is
+# called by openam-configure task
+##
+
+- name: Copy server-config.xml
+  template: src=server-config.xml dest={{ openam_location }} mode=0600 force=yes
+
+# Since this whole task(openam-multiple-config-store) itself is called by openam-configure task the variable
+# "item" is defined in the openam-configure task. The "item" here refers to all the instances of OpenAM
+- name: Update the server config file with multiple data centers
+  command: "{{ ssoadm_location }}/ssoadm set-svrcfg-xml -s https://{{ item }}:{{ tomcat_secure_port }}/amserver --xmlfile {{ openam_location }}/server-config.xml -u amadmin -f {{ openam_root_password_location }}"
+  

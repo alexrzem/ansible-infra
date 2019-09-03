@@ -1,0 +1,81 @@
+#!/bin/bash
+#
+# description: PSS init script
+# processname: pss
+# chkconfig: 234 20 80
+ 
+#Location of JAVA_HOME (bin files)
+export JAVA_HOME={{ jdk_location }}
+ 
+#Add Java binary files to PATH
+export PATH=$JAVA_HOME/bin:$PATH
+
+#PSS_HOME is the default user
+PSS_HOME={{ ping_sync_home }}
+
+#PSS_USER is the default user
+export PSS_USER={{ func_user }}
+ 
+#PSS_USAGE is the message if this script is called without any options
+PSS_USAGE="Usage: $0 {\e[00;32mstart\e[00m|\e[00;31mstop\e[00m|\e[00;31mrestart\e[00m}"
+ 
+#SHUTDOWN_WAIT is wait time in seconds for java proccess to stop
+SHUTDOWN_WAIT=20
+ 
+pss_pid() {
+        echo `ps -fe | grep $PSS_HOME | grep -v grep | tr -s " "|cut -d" " -f2`
+}
+ 
+start() {
+  pid=$(pss_pid)
+  if [ -n "$pid" ]
+  then
+    echo -e "\e[00;31mPSS is already running (pid: $pid)\e[00m"
+  else
+    # Start PSS
+    echo -e "\e[00;32mStarting PSS\e[00m"
+    /bin/su $PSS_USER -c $PSS_HOME/bin/start-sync-server
+  fi
+  return 0
+}
+ 
+stop() {
+  pid=$(pss_pid)
+  if [ -n "$pid" ]
+  then
+    echo -e "\e[00;31mStoping PSS\e[00m"
+    #/bin/su -p -s /bin/sh $PSS_USER
+        sh $PSS_HOME/bin/stop-sync-server
+ 
+    let kwait=$SHUTDOWN_WAIT
+    count=0;
+    until [ `ps -p $pid | grep -c $pid` = '0' ] || [ $count -gt $kwait ]
+    do
+      echo -n -e "\n\e[00;31mwaiting for processes to exit\e[00m";
+      sleep 1
+      let count=$count+1;
+    done
+ 
+  else
+    echo -e "\e[00;31mPSS is not running\e[00m"
+  fi
+ 
+  return 0
+}
+ 
+case $1 in
+	start)
+	  start
+	;;
+	stop)  
+	  stop
+	;;
+	restart)
+	  stop
+	  start
+	;;
+	*)
+		echo -e $PSS_USAGE
+	;;
+esac    
+exit 0

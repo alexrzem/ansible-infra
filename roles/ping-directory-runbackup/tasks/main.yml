@@ -1,0 +1,31 @@
+---
+
+##
+# Description: This task takes a full backup of the PDS. Because since we have configured the backup as a cronjob. 
+# For the first time, the incremental backups will look for a folder which has the full backup. 
+# So this role will prevent the incremental backup from failing during the first instance, until the next full backup is started.
+##
+
+- name: Copy over the root user password file
+  template: src=ping_root_password.pwd  dest={{ ping_location }} mode=0400
+
+- name: Create backup location directory for Ping Directory
+  file: state=directory path={{ ping_directory_backup_location }}
+
+# set_fact allows us for setting a new variable which holds on a value that can be used anywhere in a role. 
+# Here date_variable is a variable which holds the date format of the PDS backup folder. This will be utilized in the Run Backup task.
+
+- set_fact:
+     date_variable: +%m-%d-%Y
+
+# We are using quote filter (Jinja 2 filter) for the date variable which pretty much adds a single quote to the date variable
+
+- name: Run Backup
+  shell: './backup -d "{{ ping_directory_backup_location }}/pds_`date {{ date_variable | quote }}`" --backUpAll --logFilePath {{ ping_directory_log_location }}/tools/backup.log'
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+- name: Purge assets
+  command: 'rm ping_root_password.pwd'
+  args:
+    chdir: "{{ ping_location }}"

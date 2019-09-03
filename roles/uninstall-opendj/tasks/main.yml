@@ -1,0 +1,47 @@
+---
+
+- name: Copy over the root user password file
+  template: src=opendj_root_password.pwd  dest={{ opendj_location }} mode=0400
+
+- name: Unconfigure replication
+  command: './dsreplication unconfigure \
+            --hostname {{ ansible_fqdn }} \
+            --port {{ opendj_directory_secure_port }} \
+            --adminUid admin \
+            --adminPasswordFile {{ opendj_root_password_location }}  \
+            --unconfigureAll \
+            --no-prompt \
+            --trustAll'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Stopping OpenDJ
+  command: "./stop-ds"
+  failed_when: not "'Running' in /opt/app/installs/opendj/logs/server.status"
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Uninstall OpenDJ
+  command: "./uninstall --cli --remove-all --no-prompt --quiet"
+  args:
+    chdir: "{{ opendj_home }}"
+
+- name: Delete OpenDJ Folders
+  command: "rm -rf opendj/"
+  args:
+    chdir: "{{ opendj_location }}"
+
+- name: Delete OpenDJ Backup Folders
+  file: path={{ opendj_backup_location }} state=absent
+
+- name: Delete OpenDJ DB Folder
+  file: path={{ opendj_db_location }} state=absent
+
+- name: Delete OpenDJ Log Folders
+  file: path={{ openDJ_log_location }} state=absent
+
+- name: Purge assets
+  file: path="{{ opendj_location }}/opendj_root_password.pwd" state=absent
+
+- name: Purge assets
+  file: path="{{ opendj_location }}/opendj_config_schema.ldif" state=absent

@@ -1,0 +1,122 @@
+---
+
+##
+# Description: This task configures Core Token Store on all the OpenDJ instances
+##
+
+- name: Copy over the root user password file
+  template: src=opendj_root_password.pwd  dest={{ opendj_location }} mode=0400
+
+- name: Copy cts-add-schema.ldif
+  template: src=cts-add-schema.ldif dest={{opendj_home_location}}/cts-add-schema.ldif mode=0600
+
+- name: Copy cts-add-indexes.txt
+  template: src=cts-add-indexes.txt dest={{opendj_home_location}}/cts-add-indexes.txt mode=0600
+
+- name: Copy cts-add-multivalue.ldif
+  template: src=cts-add-multivalue.ldif dest={{opendj_home_location}}/cts-add-multivalue.ldif mode=0600
+
+- name: Copy cts-add-mutlivalue-indices.ldif
+  template: src=cts-add-multivalue-indices.ldif dest={{opendj_home_location}}/cts-add-multivalue-indices.ldif mode=0600
+
+- name: Copy cts-indices.ldif
+  template: src=cts-indices.ldif dest={{opendj_home_location}}/cts-indices.ldif mode=0600
+
+- name: Copy cts-container.ldif
+  template: src=cts-container.ldif dest={{opendj_home_location}}/cts-container.ldif mode=0600
+  
+- name: Add cts-add-schema.ldif file to repository
+  command: './ldapmodify \
+          --port {{ opendj_directory_secure_port }} \
+          --bindDN {{ opendj_root_user }} \
+          --bindPasswordFile {{ opendj_root_password_location }} \
+          --keyStorePath {{ keystore_location }} \
+          --keyStorePassword {{ keystore_password }} \
+          --certNickname {{ certificate_nickname }} \
+          --trustAll \
+          --useSsl \
+          --filename {{opendj_home_location}}/cts-add-schema.ldif'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Add cts-add-multivalue.ldif file to repository
+  command: './ldapmodify \
+          --port {{ opendj_directory_secure_port }} \
+          --bindDN {{ opendj_root_user }} \
+          --bindPasswordFile {{ opendj_root_password_location }} \
+          --keyStorePath {{ keystore_location }} \
+          --keyStorePassword {{ keystore_password }} \
+          --certNickname {{ certificate_nickname }} \
+          --trustAll \
+          --useSsl \
+          --filename {{opendj_home_location}}/cts-add-multivalue.ldif'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Add cts-add-multivalue-indices.ldif file to repository
+  command: './ldapmodify \
+          --port {{ opendj_directory_secure_port }} \
+          --bindDN {{ opendj_root_user }} \
+          --bindPasswordFile {{ opendj_root_password_location }} \
+          --keyStorePath {{ keystore_location }} \
+          --keyStorePassword {{ keystore_password }} \
+          --certNickname {{ certificate_nickname }} \
+          --trustAll \
+          --useSsl \
+          --filename {{opendj_home_location}}/cts-add-multivalue-indices.ldif'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Add cts-indices file to repository
+  command: './ldapmodify \
+          --port {{ opendj_directory_secure_port }} \
+          --bindDN {{ opendj_root_user }} \
+          --bindPasswordFile {{ opendj_root_password_location }} \
+          --keyStorePath {{ keystore_location }} \
+          --keyStorePassword {{ keystore_password }} \
+          --certNickname {{ certificate_nickname }} \
+          --trustAll \
+          --useSsl \
+          --filename {{opendj_home_location}}/cts-indices.ldif'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Add cts-container.ldif file
+  command: './ldapmodify \
+          --port {{ opendj_directory_secure_port }} \
+          --bindDN {{ opendj_root_user }} \
+          --bindPasswordFile {{ opendj_root_password_location }} \
+          --keyStorePath {{ keystore_location }} \
+          --keyStorePassword {{ keystore_password }} \
+          --certNickname {{ certificate_nickname }} \
+          --trustAll \
+          --useSsl \
+          --filename {{opendj_home_location}}/cts-container.ldif'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Rebuild all indexes
+  command: './rebuild-index \
+          --port {{ opendj_admin_port }} \
+          --bindDN {{ opendj_root_user }} \
+          --bindPasswordFile {{ opendj_root_password_location }} \
+          --baseDN "{{cts_base_dn}}" \
+          --rebuildAll \
+          --start 0 \
+          --trustAll \'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+
+- name: Purge assets
+  command: 'rm cts-container.ldif cts-add-indexes.txt cts-indices.ldif cts-add-multivalue-indices.ldif cts-add-multivalue.ldif cts-add-schema.ldif'
+  args:
+    chdir: "{{opendj_home_location}}"
+
+- name: Purge password file
+  file: path="{{ opendj_location }}/opendj_root_password.pwd" state=absent
+
+- name: Restarting OpenDJ
+  command: "./stop-ds --restart"
+  args:
+    chdir: "{{ opendj_bin_location }}"

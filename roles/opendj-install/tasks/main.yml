@@ -1,0 +1,155 @@
+---
+
+##
+# Description: This task installs OpenDJ on the machine
+##
+
+- name: Create directory for OpenDJ 
+  file: state=directory path={{ opendj_location }}
+
+- name: Download OpenDJ zip to host
+  get_url: url={{ opendj_download_url }}{{ opendj_binary }}{{ opendj_binary_ext }} dest={{ opendj_location }}
+
+- name: Unzip the OpenDJ Directory
+  command: '{{ unzip }} {{ opendj_binary }}{{ opendj_binary_ext }}'
+  args:
+    chdir: "{{ opendj_location }}"
+
+- name: Delete the OpenDJ zip
+  file: path={{ opendj_location }}/{{ opendj_binary }}{{ opendj_binary_ext }} state=absent
+
+- name: Delete the existing java.properties
+  file: path="{{ opendj_home }}/template/config/java.properties" state=absent
+
+- name: Copy over the java.properties file
+  template: src=java.properties  dest="{{ opendj_home }}/template/config/" mode=0444
+
+- name: Copy over the root user password file
+  template: src=opendj_root_password.pwd  dest={{ opendj_location }} mode=0400
+
+- name: Copy over the dsconfig batch file
+  template: src=dsconfig_batch  dest={{ opendj_location }} mode=0400
+
+- name: Copy over the cts entry file
+  template: src=cts_entry.ldif  dest={{ opendj_location }} mode=0400
+
+- name: Copy over the opendj_config_schema.ldif
+  template: src=opendj_config_schema.ldif  dest={{ opendj_location }} mode=0400
+
+- name: Setup OpenDJ
+  command: './setup directory-server \
+          --rootUserDN {{ opendj_root_user }} \
+          --rootUserPasswordFile {{ root_password_location }} \
+          --hostname {{ ansible_fqdn }}
+          --ldapPort {{ opendj_directory_port }} \
+          --certNickname {{ certificate_nickname }} \
+          --useJavaKeystore {{ keystore_location }} \
+          --keyStorePassword {{ keystore_password }} \
+          --enableStartTLS \
+          --ldapsPort {{ opendj_directory_secure_port }} \
+          --httpsPort {{ opendj_directory_https_port }} \
+          --adminConnectorPort {{ opendj_admin_port }} \
+          --baseDN {{ cts_base_dn }} \
+          --addBaseEntry \
+          --backendType je \
+          --productionMode \
+          --acceptLicense '
+  args: 
+    chdir: "{{ opendj_home }}"
+
+- name: Create log directory for OpenDJ Directory
+  file: state=directory path={{ openDJ_log_location }}
+
+- name: Run dsconfig batch file
+  command: './dsconfig \
+          --hostname {{ ansible_fqdn }} \
+          --port {{ opendj_admin_port }} \
+          --bindDN {{ opendj_root_user }} \
+          --bindPasswordFile {{ root_password_location }} \
+          --no-prompt \
+          --trustAll \
+          --batchFilePath {{ opendj_location}}/dsconfig_batch '
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Stopping OpenDJ
+  command: "./stop-ds"
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Moving the userRoot db folders
+  command: "mv {{ opendj_home }}/db/userRoot {{ opendj_db_location }}"
+
+- name: Moving the configStore db folders
+  command: "mv {{ opendj_home }}/db/configStore {{ opendj_db_location }}"
+
+- name: Starting OpenDJ
+  command: "./start-ds"
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Add DIT structure for CTS and Config Store
+  command: './ldapmodify \
+          --hostname {{ ansible_fqdn }} \
+          --port {{ opendj_directory_secure_port }} \
+          --bindDN {{ opendj_root_user }} \
+          --bindPasswordFile {{ root_password_location }} \
+          --filename {{ opendj_location}}/cts_entry.ldif \
+          --keyStorePath {{ keystore_location }} \
+          --keyStorePassword {{ keystore_password }} \
+          --certNickname {{ certificate_nickname }} \
+          --trustAll \
+          --useSsl \
+          --continueOnError'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+  ignore_errors: yes
+
+- name: Set global aci for custom admin
+  command: './dsconfig set-access-control-handler-prop \
+          --add \
+          global-aci:\(target=\"ldap:///cn=schema\"\)\(targetattr=\"attributeTypes\|\|objectClasses\"\)\(version\ 3.0\;\ acl\ \"Modify\ schema\"\;\ allow\ \(write\)\ groupdn=\"ldap:///{{ config_store_admin_group }}\"\;\) \
+          --hostname {{ ansible_fqdn }} \
+          --port {{ opendj_admin_port }} \
+          --bindDN {{ opendj_root_user }} \
+          --bindPasswordFile {{ root_password_location }} \
+          --no-prompt \
+          --trustAll '
+          
+  args:        
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Add opendj_config_schema
+  command: './ldapmodify \
+          --hostname {{ ansible_fqdn }} \
+          --port {{ opendj_directory_secure_port }} \
+          --bindDN {{ opendj_root_user }} \
+          --bindPasswordFile {{ root_password_location }} \
+          --filename {{ opendj_location}}/opendj_config_schema.ldif \
+          --keyStorePath {{ keystore_location }} \
+          --keyStorePassword {{ keystore_password }} \
+          --certNickname {{ certificate_nickname }} \
+          --trustAll \
+          --useSsl'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Restart server
+  command: './stop-ds --restart'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Purge asset
+  file: path="{{ opendj_location }}/opendj_root_password.pwd" state=absent
+
+- name: Purge asset
+  file: path="{{ opendj_location }}/cts_entry.ldif" state=absent
+
+- name: Purge asset
+  file: path="{{ opendj_location }}/dsconfig_batch" state=absent
+
+- name: Purge asset
+  file: path="{{ opendj_location }}/opendj_config.dsconfig" state=absent
+
+- name: Purge asset
+  file: path="{{ opendj_location }}/opendj_config_schema.ldif" state=absent

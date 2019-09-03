@@ -1,0 +1,13 @@
+# Startup on reboot
+- name: Startup on rebootStartup on reboot
+  hosts: ALL:!OIDMachines
+  tags: [ startup, install-everything ]
+  tasks:
+  serial: 1
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: start-on-reboot }

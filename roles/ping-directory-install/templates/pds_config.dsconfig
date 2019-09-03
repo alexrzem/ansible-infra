@@ -1,0 +1,99 @@
+dsconfig set-access-control-handler-prop --add allowed-bind-control-oid:1.3.6.1.4.1.36733.2.1.5.1 --advanced --no-prompt
+
+dsconfig set-key-manager-provider-prop --provider-name JKS --set enabled:true --set key-store-file:{{ keystore_location }} --set key-store-pin:{{ keystore_password }} --reset key-store-pin-file
+
+dsconfig create-location --location-name {{ data_center_location }}
+
+dsconfig set-global-configuration-prop --set location:{{ data_center_location }} --set single-structural-objectclass-behavior:accept
+
+dsconfig set-trust-manager-provider-prop --provider-name JKS --set enabled:true --set trust-store-file:/opt/app/vticerts/truststore --set "trust-store-pin:{{ keystore_password }}"
+
+dsconfig set-backend-prop --backend-name changelog --set enabled:true --set db-directory:{{ ping_directory_db_location }}
+
+dsconfig create-local-db-index --backend-name userRoot --index-name iplanet-am-user-federation-info-key --set index-type:equality
+
+dsconfig create-local-db-index --backend-name userRoot --index-name sun-fm-saml2-nameid-infokey --set index-type:equality
+
+dsconfig set-access-control-handler-prop --add 'global-aci:(extop="1.3.6.1.4.1.30221.2.6.10")(version 3.0; acl "Proxy User Access to selected extended operations"; allow (read) userdn="ldap:///cn=Proxy User,cn=Root DNs,cn=config";)' --add 'global-aci:(targetattr="*")(version 3.0; acl "Proxy User Access"; allow(proxy) userdn="ldap:///cn=Proxy User,cn=Root DNs,cn=config";)' --add 'global-aci:(target="ldap:///cn=schema")(targetattr="attributeTypes||objectClasses")(version 3.0; acl "Modify schema"; allow (write) groupdn="ldap:///cn=openAMAdmin,ou=AdminGroups,dc=verizontelematics,dc=com";)' --add 'global-aci:(targetattr="entryUUID || entryDN || ds-entry-unique-id || createTimestamp || ds-create-time || modifyTimestamp || ds-update-time || ds-entry-checksum")(version 3.0;acl "Authenticated read access to operational attributes used by the SCIM servlet extension"; allow (read,search,compare) userdn="ldap:///all";)' --add 'global-aci:(targetcontrol="1.3.6.1.1.13.2 || 1.2.840.113556.1.4.473 || 1.2.840.113556.1.4.319 || 2.16.840.1.113730.3.4.9 || 1.3.6.1.1.12 || 1.2.840.113556.1.4.1413")(version 3.0;acl "Authenticated access to controls used by the SCIM servlet extension"; allow (all) userdn="ldap:///all";)'
+
+dsconfig set-backend-prop --backend-name userRoot --set base-dn:dc=verizontelematics,dc=com --set db-directory:{{ ping_directory_db_location }} --set db-cache-percent:65 --set prime-method:preload --set db-import-cache-percent:65
+
+dsconfig set-connection-handler-prop --handler-name "LDAP Connection Handler" --set allow-start-tls:true --set key-manager-provider:JKS --set trust-manager-provider:JKS
+
+dsconfig set-crypto-manager-prop --reset ssl-encryption
+
+dsconfig set-http-servlet-extension-prop --extension-name SCIM --set entity-tag-ldap-attribute:ds-entry-checksum
+
+dsconfig set-password-policy-prop --policy-name "Default Password Policy" --set allow-pre-encoded-passwords:true
+
+dsconfig set-password-storage-scheme-prop --scheme-name MD5 --set enabled:true
+
+dsconfig create-password-validator --validator-name 3of4NumLowUpperSpecial --type regular-expression --set description:3of4NumLowUpperSpecial --set enabled:true --set 'match-pattern:^(?:(?!.*[<>])(?:(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])|(?=.*[~!\[@#$%^&*()_,"'"'"':;|`\]\{+=?.\}\\\/<>-])(?=.*[a-z])(?=.*[0-9])|(?=.*[~!\[@#$%^&*()_,"'"'"':;|`\]\{+=?.\}\\\/<>-])(?=.*[a-z])(?=.*[A-Z])|(?=.*[~!\[@#$%^&*()_,"'"'"':;|`\]\{+=?.\}\\\/<>-])(?=.*[0-9])(?=.*[A-Z]))).*$' --set match-behavior:require-match
+
+dsconfig create-password-validator --validator-name MinLen4MaxLen4 --type length-based --set description:MinLen4MaxLen4 --set enabled:true --set max-password-length:4 --set min-password-length:4
+
+dsconfig create-password-validator --validator-name MinLen8MaxLen24 --type length-based --set description:MinLen8MaxLen24 --set enabled:true --set max-password-length:24 --set min-password-length:8
+
+dsconfig create-password-policy --policy-name VVUS --set description:VVUS --set password-attribute:userpassword --set default-password-storage-scheme:MD5 --set allow-pre-encoded-passwords:true --set password-validator:3of4NumLowUpperSpecial --set password-validator:MinLen8MaxLen24 --set "password-expiration-warning-interval:0 ms" --set expire-passwords-without-warning:true --set lockout-failure-count:5 --set "lockout-duration:30 m" --set ignore-duplicate-password-failures:false --set allow-user-password-changes:false
+
+dsconfig create-password-validator --validator-name NumericPin --type character-set --set description:NumericPin --set enabled:true --set character-set:1:0123456789 --set allow-unclassified-characters:false
+
+dsconfig create-password-policy --policy-name MBUS --set description:MBUS --set password-attribute:userpassword --set default-password-storage-scheme:MD5 --set allow-pre-encoded-passwords:true --set password-validator:MinLen4MaxLen4 --set password-validator:NumericPin --set "password-expiration-warning-interval:0 ms" --set expire-passwords-without-warning:true --set lockout-failure-count:5 --set "lockout-duration:12 h" --set ignore-duplicate-password-failures:false --set allow-user-password-changes:false
+
+dsconfig create-password-policy --policy-name VWUS --set description:VWUS --set password-attribute:userpassword --set default-password-storage-scheme:MD5 --set allow-pre-encoded-passwords:true --set password-validator:MinLen4MaxLen4 --set password-validator:NumericPin --set "password-expiration-warning-interval:0 ms" --set expire-passwords-without-warning:true --set lockout-failure-count:5 --set "lockout-duration:4 h" --set ignore-duplicate-password-failures:false --set allow-user-password-changes:false
+
+dsconfig create-virtual-attribute --name "MBUS Password Policy" --type user-defined --set "description:MBUS Password Policy" --set enabled:true --set attribute-type:ds-pwp-password-policy-dn --set base-dn:ou=Users,ou=MBUS,ou=external,dc=verizontelematics,dc=com --set "value:cn=MBUS,cn=Password Policies,cn=config"
+
+dsconfig create-virtual-attribute --name "VVUS Password Policy" --type user-defined --set "description:VVUS Password Policy" --set enabled:true --set attribute-type:ds-pwp-password-policy-dn --set base-dn:ou=Users,ou=VVUS,ou=external,dc=verizontelematics,dc=com --set "value:cn=VVUS,cn=Password Policies,cn=config"
+
+dsconfig create-virtual-attribute --name "VWUS Password Policy" --type user-defined --set "description:VWUS Password Policy" --set enabled:true --set attribute-type:ds-pwp-password-policy-dn --set base-dn:ou=Users,ou=VWUS,ou=external,dc=verizontelematics,dc=com --set "value:cn=VWUS,cn=Password Policies,cn=config"
+
+dsconfig set-web-application-extension-prop --extension-name Console --set trust-store-file:/opt/app/vticerts/truststore --set trust-store-type:JKS
+
+dsconfig set-connection-handler-prop --handler-name "HTTPS Connection Handler" --set enabled:true --set web-application-extension:Console --set key-manager-provider:JKS --set trust-manager-provider:JKS
+
+dsconfig set-connection-handler-prop --handler-name "LDAPS Connection Handler" --set enabled:true
+
+dsconfig set-connection-handler-prop --handler-name "LDAP Connection Handler" --set allow-start-tls:true --set key-manager-provider:JKS --set trust-manager-provider:JKS
+
+dsconfig create-root-dn-user --user-name "Proxy User" --set "alternate-bind-dn:cn=Proxy User" --set "password:{{ping_root_password}}" --set first-name:Proxy --set last-name:User --set inherit-default-root-privileges:false --set privilege:bypass-acl --set privilege:config-read --set privilege:lockdown-mode --set privilege:permit-get-password-policy-state-issues --set privilege:permit-proxied-mschapv2-details --set privilege:proxied-auth --set privilege:stream-values
+
+dsconfig create-root-dn-user --user-name "Sync User" --set "alternate-bind-dn:cn=Sync User" --set "password:{{ping_root_password}}" --set first-name:Sync --set last-name:User --set inherit-default-root-privileges:false --set privilege:bypass-acl --set privilege:bypass-pw-policy --set privilege:config-read --set privilege:password-reset --set privilege:unindexed-search
+
+dsconfig set-password-policy-prop --policy-name VWUS --set allow-changing-to-current-password:true
+
+dsconfig set-password-policy-prop --policy-name MBUS --set allow-changing-to-current-password:true
+
+dsconfig set-log-rotation-policy-prop --policy-name "Size Limit Rotation Policy" --set "file-size-limit:200 mb"
+
+dsconfig create-log-retention-policy --policy-name "File Count Retention Policy 3" --type file-count --set "description:File Count Retention Policy to retain only 3 files" --set number-of-files:3
+
+dsconfig create-log-retention-policy --policy-name "File Count Retention Policy 7" --type file-count --set "description:File Count Retention Policy to retain only 7 files" --set number-of-files:7
+
+dsconfig set-log-publisher-prop --publisher-name "Debug ACI Logger" --set enabled:false --set log-file:{{ ping_directory_log_location }}/debug-aci --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Expensive Operations Access Logger" --set enabled:false --set log-file:{{ ping_directory_log_location }}/expensive-ops --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Failed Operations Access Logger" --set enabled:true --remove "rotation-policy:24 Hours Time Limit Rotation Policy" --remove "retention-policy:Size Limit Retention Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 7" --set log-file:{{ ping_directory_log_location }}/failed-ops --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Access Logger" --set enabled:true --remove "rotation-policy:24 Hours Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 7" --set log-file:{{ ping_directory_log_location }}/access --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Audit Logger" --set enabled:false --set log-file:{{ ping_directory_log_location }}/audit --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Debug Logger" --set enabled:false --set log-file:{{ ping_directory_log_location }}/debug --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Error Logger" --set enabled:true --remove "rotation-policy:7 Days Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 7" --set log-file:{{ ping_directory_log_location }}/errors --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "JSON Access Logger" --set enabled:true --remove "rotation-policy:24 Hours Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 3" --set log-file:{{ ping_directory_log_location }}/access.json --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "JSON Error Logger" --set enabled:true --remove "rotation-policy:7 Days Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 3" --set log-file:{{ ping_directory_log_location }}/errors.json --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Replication Repair Logger" --set enabled:true --remove "rotation-policy:7 Days Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 7" --set log-file:{{ ping_directory_log_location }}/replication --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Server SDK Extension Debug Logger" --set enabled:false --set log-file:{{ ping_directory_log_location }}/server-sdk-extension-debug --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Successful Searches with No Entries Returned" --set enabled:false --set log-file:{{ ping_directory_log_location }}/searches-returning-no-entries --set log-file-permissions:640
+    
+dsconfig set-log-publisher-prop --publisher-name "HTTP Detailed Access" --set enabled:true --remove "rotation-policy:24 Hours Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --remove "retention-policy:Free Disk Space Retention Policy" --add "retention-policy:File Count Retention Policy 3" --set log-file:{{ ping_directory_log_location }}/http-detailed-access --set log-file-permissions:640
+
+dsconfig set-global-configuration-prop --set configuration-server-group:all-servers

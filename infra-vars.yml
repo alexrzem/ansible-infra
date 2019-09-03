@@ -1,0 +1,204 @@
+###############################################################################
+# Functional USER and GROUP
+###############################################################################
+
+func_user: 'iam'
+func_group: 'iam'
+
+
+
+###############################################################################
+# Environment tools location
+###############################################################################
+
+unzip : '/usr/bin/unzip'
+jdk_location : /opt/app/jdk/jre
+app_location : /opt/app/
+
+
+
+###############################################################################
+# Keystore and Truststore Variables
+###############################################################################
+
+cert_folder_location : /opt/app/vticerts
+keystore_location : "{{cert_folder_location}}/keystore"
+trustore_location : "{{cert_folder_location}}/truststore"
+keystore_type : JKS
+storepass_password_location : "{{cert_folder_location}}/.storepass"
+keypass_password_location : "{{cert_folder_location}}/.keypass"
+certificate_nickname : server-cert
+
+
+
+###############################################################################
+# Ping Variables
+###############################################################################
+
+ping_home_location : /opt/app
+ping_location : "{{ping_home_location}}/installs"
+ping_version : 6.0.1.2
+ping_https_port : 8443
+
+
+
+###############################################################################
+# Ping Directory Variables
+###############################################################################
+
+ping_home : "{{ ping_location }}/pds"
+ping_bin_location : "{{ ping_location }}/pds/bin"
+ping_directory_port : 1389
+ping_directory_secure_port : 1636
+ping_directory_root_user : cn=Directory\ Manager
+base_dn : dc=verizontelematics,dc=com
+ping_directory_db_location : "{{ping_home_location}}/db/pds"
+ping_directory_root_password_location : "{{ ping_location }}/ping_root_password.pwd"
+
+################  Backup Variables  ###########################################
+delete_old_backup: "-mindepth 1 -mtime 7 -type d | xargs rm -rf"
+pds_date_filename: "pds_`date -d '-1 day' '+\\%m-\\%d-\\%Y'`"
+opendj_date_filename: "opendj_`date '+\\%m-\\%d-\\%Y'`"
+
+
+
+###############################################################################
+# Ping Proxy Variables
+###############################################################################
+
+ping_proxy_home : "{{ ping_location }}/pps"
+ping_proxy_bin : "{{ ping_location }}/pps/bin"
+ping_proxy_port : 1389
+ping_proxy_secure_port : 1636
+ping_proxy_replication_port : 8989
+ping_proxy_root_user : cn=Directory\ Manager
+
+
+
+###############################################################################
+# Ping Sync Variables
+###############################################################################
+
+ping_sync_home : "{{ ping_location }}/pss"
+ping_sync_bin : "{{ ping_location }}/pss/bin"
+ping_sync_port : 1389
+ping_sync_secure_port : 1636
+ping_sync_root_user : cn=Directory\ Manager
+sync_pipe_oid_to_pds : OID2PDS
+sync_pipe_pds_to_oid : PDS2OID
+
+###############################################################################
+# Ping Metrics Variables
+###############################################################################
+
+ping_metrics_home : "{{ ping_location }}/pdm"
+ping_metrics_bin : "{{ ping_location }}/pdm/bin"
+ping_metrics_port : 2389
+ping_metrics_secure_port : 2636
+ping_metrics_root_user : cn=Directory\ Manager
+ping_metrics_https_port : 9443
+
+###############################################################################
+# OID Variables
+###############################################################################
+
+oid_port : 3060
+oid_secure_port : 3130
+
+###############################################################################
+# Forgerock Variables
+###############################################################################
+
+forgerock_location : /opt/app/installs/forgerock
+
+
+
+###############################################################################
+# OpenDJ Variables
+###############################################################################
+
+
+opendj_home_location : /opt/app
+opendj_location : "{{opendj_home_location}}/installs"
+opendj_home : "{{ opendj_location }}/opendj"
+opendj_bin_location : "{{ opendj_location }}/opendj/bin"
+opendj_directory_port : 2389
+opendj_directory_secure_port : 2636
+opendj_directory_replication_port : 8990
+opendj_directory_https_port : 9443
+opendj_admin_port : 4444
+opendj_root_user : cn=Directory\ Manager
+config_base_dn : dc=openam,dc=verizontelematics,dc=com
+cts_base_dn : "dc={{ data_center_location | lower }},dc=cts,dc=verizontelematics,dc=com"
+config_store_admin_group : cn=openAMcfgAdmin,ou=AdminGroups,dc=openam,dc=verizontelematics,dc=com
+config_store_admin : cn=oamcfgadmin,ou=admins,dc=openam,dc=verizontelematics,dc=com
+opendj_https_port : 8443
+opendj_root_password_location : "{{opendj_location}}/opendj_root_password.pwd"
+opendj_db_location: "{{opendj_home_location}}/db/opendj"
+
+
+
+###############################################################################
+# OpenAM Variables
+###############################################################################
+
+openam_home_location: /opt/app
+openam_location: "{{openam_home_location}}/installs"
+openam_root_password_location : "{{openam_location}}/openam_root_password.pwd"
+openam_tools : "{{openam_home_location}}/softwares/openam"
+openam_version : 14.1.0
+openam_context : amserver
+openam_base_dir : "{{forgerock_location}}/access"
+data_store : dirServer
+directory_ssl : SSL
+directory_port : "{{ opendj_directory_secure_port }}"
+root_suffix : dc=openam,dc=verizontelematics,dc=com
+ds_dirmgrdn : "{{ config_store_admin }}"
+user_store_admin : cn=oamadmin,ou=admins,dc=verizontelematics,dc=com
+userstore_ssl : SSL
+userstore_port : 1636
+userstore_suffix : dc=verizontelematics,dc=com
+userstore_mgrdn : "{{ user_store_admin }}"
+openam_admin_tools : "{{forgerock_location}}/AdminTools"
+ssoadm_location : "{{openam_admin_tools}}/amserver/bin"
+ford_realm_name : FORDAPP
+hum_realm_name : HUMAPP
+mercedes_benz_realm_name : MBPURLAPP
+volkswagen_realm_name : VWPURLAPP
+cts_store_admin : cn=oamctsadmin,ou=admins,{{ cts_base_dn }}
+fordapp_datastore_name: PDS_FORDUS
+humapp_datastore_name: PDS_VVUS
+mbpurlapp_datastore_name: PDS_MBUS
+vwpurlapp_datastore_name: PDS_VWUS
+openam_log_retention_no: 3
+
+#Role - openam-realm-configure
+realms: ["{{ ford_realm_name }}","{{ hum_realm_name }}","{{ mercedes_benz_realm_name }}","{{ volkswagen_realm_name }}"]
+realm_datastore_batch: [fordapp_datastore.batch,humapp_datastore.batch,mbpurlapp_datastore.batch,vwpurlapp_datastore.batch]
+
+
+
+###############################################################################
+# Tomcat Variables
+###############################################################################
+
+tomcat_version : 8.5.15
+tomcat_server : "{{forgerock_location}}/tomcat"
+tomcat_port : 8080
+tomcat_secure_port : 8443
+
+
+
+###############################################################################
+# Log locations
+###############################################################################
+
+log_parent_directory : /opt/app/logs
+ping_directory_log_location : "{{log_parent_directory}}/pds"
+openDJ_log_location: "{{log_parent_directory}}/opendj"
+ping_proxy_log_location: "{{log_parent_directory}}/pps"
+ping_sync_log_location: "{{log_parent_directory}}/pss"
+ping_metrics_log_location: "{{log_parent_directory}}/pdm"
+openam_log_location: "{{log_parent_directory}}/openam"
+tomcat_log_location: "{{log_parent_directory}}/tomcat"
+

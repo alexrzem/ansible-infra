@@ -1,0 +1,133 @@
+---
+
+#################################################################################################
+### OpenAM Tomcat startup init script ###
+#################################################################################################
+
+- name: Check if tomcat init script is already present
+  stat:
+    path: /etc/init.d/tomcat_iam
+  register: tomcat_init_result
+
+- name: Copy over the tomcat init script
+  template: src=tomcat_iam  dest=/etc/init.d/ mode=0755
+  when: "(tomcat_init_result.stat.exists == False) and ('OpenAMMachines' in group_names)"
+  become: yes
+  become_user: "root"
+
+- name: Register tomcat init script
+  command: "chkconfig tomcat_iam on"
+  when: "(tomcat_init_result.stat.exists == False) and ('OpenAMMachines' in group_names)"
+  become: yes
+  become_user: "root"
+
+
+#################################################################################################
+### PDS startup init script ###
+#################################################################################################
+
+- name: Check if pds init script is already present
+  stat:
+    path: /etc/init.d/pds_iam
+  register: pds_init_result
+
+- name: Copy over the pds init script
+  template: src=pds_iam  dest=/etc/init.d/ mode=0755
+  when: "(pds_init_result.stat.exists == False) and ('PingDirectoryMachines' in group_names)"
+  become: yes
+  become_user: "root"
+
+- name: Register pds init script
+  command: "chkconfig pds_iam on"
+  when: "(pds_init_result.stat.exists == False) and ('PingDirectoryMachines' in group_names)"
+  become: yes
+  become_user: "root"
+
+
+#################################################################################################
+### PPS startup init script ###
+#################################################################################################
+
+- name: Check if pps init script is already present
+  stat:
+    path: /etc/init.d/pps_iam
+  register: pps_init_result
+
+- name: Copy over the pps init script
+  template: src=pps_iam  dest=/etc/init.d/ mode=0755
+  when: "(pps_init_result.stat.exists == False) and ('PingProxyMachines' in group_names)"
+  become: yes
+  become_user: "root"
+
+- name: Register pps init script
+  command: "chkconfig pps_iam on"
+  when: "(pps_init_result.stat.exists == False) and ('PingProxyMachines' in group_names)"
+  become: yes
+  become_user: "root"
+
+
+#################################################################################################
+### PSS startup init script ###
+#################################################################################################
+
+- name: Check if pss init script is already present
+  stat:
+    path: /etc/init.d/pss_iam
+  register: pss_init_result
+
+- name: Copy over the pss init script
+  template: src=pss_iam  dest=/etc/init.d/ mode=0755
+  when: "(pss_init_result.stat.exists == False) and ('PingSyncMachines' in group_names)"
+  become: yes
+  become_user: "root"
+
+- name: Register pss init script
+  command: "chkconfig pss_iam on"
+  when: "(pss_init_result.stat.exists == False) and ('PingSyncMachines' in group_names)"
+  become: yes
+  become_user: "root"
+
+
+#################################################################################################
+### PDM startup init script ###
+#################################################################################################
+
+- name: Check if pdm init script is already present
+  stat:
+    path: /etc/init.d/pdm_iam
+  register: pdm_init_result
+
+- name: Copy over the pdm init script
+  template: src=pdm_iam  dest=/etc/init.d/ mode=0755
+  when: "(pdm_init_result.stat.exists == False) and ('PingMetricsMachines' in group_names)"
+  become: yes
+  become_user: "root"
+
+- name: Register pdm init script
+  command: "chkconfig pdm_iam on"
+  when: "(pdm_init_result.stat.exists == False) and ('PingMetricsMachines' in group_names)"
+  become: yes
+  become_user: "root"
+
+
+#################################################################################################
+### OPENDJ startup init script ###
+#################################################################################################
+
+- name: Check if opendj init script is already present
+  stat:
+    path: /etc/init.d/opendj_iam
+  register: opendj_init_result
+
+- name: Copy over the opendj init script
+  template: src=opendj_iam  dest=/etc/init.d/ mode=0755
+  when: "(opendj_init_result.stat.exists == False) and ('OpenDJMachines' in group_names)"
+  become: yes
+  become_user: "root"
+
+- name: Register opendj init script
+  command: "chkconfig opendj_iam on"
+  when: "(opendj_init_result.stat.exists == False) and ('OpenDJMachines' in group_names)"
+  become: yes
+  become_user: "root"
+

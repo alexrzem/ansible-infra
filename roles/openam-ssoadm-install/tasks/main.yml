@@ -1,0 +1,42 @@
+---
+
+##
+# Description: This task installs SSOADM tool on the OpenAM Machine
+##
+
+- name: Copy over the root user password file
+  template: src=openam_root_password.pwd  dest={{openam_location}} mode=0400
+  
+- name: Create directory for SSOAdminTools
+  file: state=directory path={{ openam_admin_tools }}
+
+- name: Download OpenAM SSO Admin Tools
+  get_url: url={{ ssoadmin_download_url }}{{ ssoadmin_binary }}{{ ssoadmin_binary_ext }} dest={{ openam_admin_tools }}
+
+- name: Unzip SSO AdminTools zip
+  command: '{{ unzip }} {{ ssoadmin_binary }}{{ ssoadmin_binary_ext }}'
+  args:
+    chdir: "{{ openam_admin_tools }}"
+
+- name: Delete the SSOAdminTool zip
+  file: path={{ openam_admin_tools }}/{{ ssoadmin_binary }}{{ ssoadmin_binary_ext }} state=absent
+
+- name: Update SSOAdminTool executables permissions
+  file: path={{ openam_admin_tools }}/setup mode=0755
+
+- name: Run Admin tools
+  command: './setup \
+          --acceptLicense \
+	        --path {{ openam_base_dir }} \
+	        --debug {{ openam_admin_tools }}/debug \
+	        --log {{ openam_admin_tools }}/log'
+  args:
+    chdir: "{{ openam_admin_tools }}"
+
+- name: Copy ssoadm
+  template: src=ssoadm dest={{ssoadm_location}} mode=0755 force=yes
+
+- name: Purge assets
+  command: 'rm -rf openam_root_password.pwd'
+  args:
+    chdir: "{{ openam_location }}"

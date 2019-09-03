@@ -1,0 +1,140 @@
+---
+
+##
+# Description: This task installs and configures the Ping Proxy.
+##
+
+- name: Create directory for Ping Proxy
+  file: state=directory path={{ ping_location }}
+
+- name: Download Ping Proxy zip to host
+  get_url: url={{ ping_proxy_download_url }}PingDirectoryProxy-{{ ping_version }}.zip dest={{ ping_location }}
+
+- name: Unzip the Ping Proxy
+  command: '{{ unzip }} PingDirectoryProxy-{{ ping_version }}.zip'
+  args:
+    chdir: "{{ ping_location }}"
+
+- name: Rename the folder
+  command: 'mv PingDirectoryProxy pps'
+  args:
+    chdir: "{{ ping_location }}"
+
+- name: Delete the Ping Proxy zip
+  file: path={{ ping_location }}/PingDirectoryProxy-{{ ping_version }}.zip state=absent
+
+- name: Copy over the root user password file
+  template: src=ping_root_password.pwd  dest={{ping_location}} mode=0400
+
+- name: Create log directory for Ping Proxy Directory
+  file: state=directory path={{ ping_proxy_log_location }}
+
+- name: Download Ping Status Extension
+  get_url: url={{ pds_status_extension_url }} dest={{ ping_location }}
+
+- name: Install Ping Status Extension
+  shell: "./manage-extension --install {{ ping_location }}/{{ status_extension_name }} --no-prompt --ignoreWarnings"
+  args:
+    chdir: "{{ ping_proxy_bin }}"
+
+# Installs Ping Proxy in the primary proxy servers based on the when condition (primary==true)
+
+- name: Setup Ping Proxy
+  command: './setup --acceptLicense \
+         --localHostName {{ ansible_fqdn }} \
+         --ldapPort {{ ping_proxy_port }} \
+         --rootUserDN {{ ping_proxy_root_user }} \
+         --rootUserPasswordFile {{ ping_directory_root_password_location }} \
+         --maxHeapSize 6g \
+         --jvmTuningParameter AGGRESSIVE \
+         --ldapsPort {{ ping_proxy_secure_port }} \
+         --httpsPort {{ ping_https_port }} \
+         --useJavaKeystore {{ keystore_location }} \
+         --keyStorePassword {{ keystore_password }} \
+         --certNickname {{ certificate_nickname }} \
+         --useJavaTruststore {{ trustore_location }} \
+         --trustStorePassword {{ keystore_password }} \
+         --no-prompt'
+  args:
+    chdir: "{{ ping_proxy_home }}"
+  when: primary == "true"
+
+# Installs Ping Proxy in the secondary proxy servers based on the when condition (primary!=true).
+# The configurations are pulled from the primary proxy machine
+
+- name: Setup Ping Proxy
+  command: './setup --acceptLicense \
+         --localHostName {{ ansible_fqdn }} \
+         --ldapPort {{ ping_proxy_port }} \
+         --rootUserDN {{ ping_proxy_root_user }} \
+         --rootUserPasswordFile {{ ping_directory_root_password_location }} \
+         --jvmTuningParameter AGGRESSIVE \
+         --maxHeapSize 6g \
+         --ldapsPort {{ ping_proxy_secure_port }} \
+         --httpsPort {{ ping_https_port }} \
+         --location {{ data_center_location }} \
+         --peerHostName {{ ping_proxy_primary_host }} \
+         --peerPort {{ ping_proxy_secure_port }} \
+         --peerUseSSL \
+         --peerTrustAll \
+         --useJavaKeystore {{ keystore_location }} \
+         --keyStorePassword {{ keystore_password }} \
+         --certNickname {{ certificate_nickname }} \
+         --useJavaTruststore {{ trustore_location }} \
+         --trustStorePassword {{ keystore_password }} \
+         --no-prompt'
+  args:
+    chdir: "{{ ping_proxy_home }}"
+  when: primary != "true"
+
+# Backup is not required for PPS as we can get the VM backups
+
+#- name: Create backup location directory for Ping Directory
+#  file: state=directory path={{ ping_proxy_backup_location }}
+
+#- name: Run Backup
+#  command: './backup -d {{ ping_proxy_backup_location }} --backUpAll'
+#  args:
+#    chdir: "{{ ping_proxy_bin }}"
+
+# Copies the dsconfig batch file in the primary proxy server based on the when condition (primary==true)
+
+- name: Copy over the proxy config file
+  template: src=proxy-cfg.dsconfig  dest={{ ping_location }}/proxy-cfg.dsconfig mode=0400 force=yes
+  when: primary == "true"
+
+# Copies the dsconfig batch file in the primary proxy server based on the when condition (primary==true)
+
+- name: Copy over the dsconfig batch file
+  template: src=ping_proxy_config.dsconfig  dest={{ping_location}} mode=0400
+  when: primary == "true"
+
+# Runs the dsconfig commands in the primary proxy server based on the when condition (primary==true)
+
+- name: Run dsconfig batch file for proxy
+  command: './dsconfig --hostname {{ ansible_fqdn }} --port {{ ping_proxy_port }} --bindDN {{ ping_proxy_root_user }} --bindPasswordFile {{ ping_directory_root_password_location }} --no-prompt --batch-file {{ping_location}}/proxy-cfg.dsconfig '
+  args:
+    chdir: "{{ ping_proxy_bin }}"
+  when: primary == "true"
+
+# Runs the dsconfig commands in the primary proxy server based on the when condition (primary==true)
+
+- name: Run dsconfig batch file
+  command: './dsconfig --hostname {{ ansible_fqdn }} --port {{ ping_proxy_port }} --bindDN {{ ping_proxy_root_user }} --bindPasswordFile {{ ping_directory_root_password_location }} --no-prompt --batch-file {{ping_location}}/ping_proxy_config.dsconfig '
+  args:
+    chdir: "{{ ping_proxy_bin }}"
+  when: primary == "true"
+
+- name: Restart server
+  command: './stop-proxy --restart'
+  args:
+    chdir: "{{ ping_proxy_bin }}"
+
+- name: Purge assets
+  file: path="{{ping_location}}/ping_proxy_config.dsconfig" state=absent
+
+- file: path="{{ping_location}}/{{ status_extension_name }}" state=absent
+
+- file: path="{{ping_location}}/ping_root_password.pwd" state=absent
+
+- file: path="{{ping_location}}/proxy-cfg.dsconfig" state=absent

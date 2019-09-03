@@ -1,0 +1,327 @@
+#######################         INSTALL       ##############################
+
+# Perform prerequisite check on all of the machines except for OID machines.
+- name: Prereq
+  hosts: ALL:!OIDMachines
+  tags: [ prereq-check, install-everything ]
+  tasks:
+  serial: 1
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: prereq-check }
+      - { role: start-on-reboot }
+
+- name: Install Ping Directory
+  hosts: [ PingDirectoryMachines ]
+  tags: [ ping-directory-install, install-directories, install-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: ping-directory-install }
+      - { role: ping-directory-plugin-extension }
+
+# Perform configurations on just the primary Ping Directory Machine
+- name: Configurations for Ping Directory
+  hosts: PingDirectoryMachines[0]
+  tags: [ ping-directory-install, install-directories, install-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: ping-directory-replication }
+      - { role: ping-directory-key-creation }
+
+# Backup task on the primary Ping Directory Machines of all Data Centers
+- name: Configurations for Ping Directory
+  hosts: PDSDataCenterPrimary
+  tags: [ ping-directory-install, install-directories, install-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: ping-directory-runbackup }
+      - { role: cronjob-backup }
+
+- name: On disk encryption for Ping Directory
+  hosts: [ PingDirectoryMachines ]
+  tags: [ ping-directory-install, install-directories, install-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: on-disk-encryption }
+
+- name: Install OpenDJ
+  hosts: [ OpenDJMachines ]
+  tags: [ opendj-install, install-directories, install-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  environment:
+    OPENDJ_JAVA_HOME: "{{ jdk_location }}"
+  roles:
+      - { role: opendj-install }
+
+- name: Configure CTS on OpenDJ
+  hosts: [ OpenDJMachines ]
+  tags: [ opendj-install, opendj-cts-configure, install-everything ]
+  tasks:
+  serial: 1
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: opendj-cts-configure }
+
+- name: Run replication of cts store on OpenDJ
+  hosts: [ OpenDJDataCenterPrimary ]
+  tags: [ rep-opendj-cts, opendj-install, install-directories, install-everything ]
+  tasks:
+  serial: 1
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: opendj-cts-replication }
+
+- name: Run replication of config store and backup for OpenDJ
+  hosts: OpenDJMachines[0]
+  tags: [ rep-opendj, opendj-install, install-directories, install-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: opendj-replication }
+
+- name: Install OpenAM
+  hosts: [ OpenAMMachines ]
+  tags: [ openam-install, install-everything ]
+  tasks:
+  serial: 1
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  environment:
+    JAVA_HOME: "{{ jdk_location }}"
+  roles:
+      - { role: openam-install }
+
+- name: Install SSOAdminTools
+  hosts: [ OpenAMMachines ]
+  tags: [ openam-install, openam-ssoadm-install, install-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  environment:
+    JAVA_HOME: "{{ jdk_location }}"
+  roles:
+      - { role: openam-ssoadm-install }
+
+- name: OpenAM Configuration
+  hosts: OpenAMMachines[0]
+  tags: [ openam-install, openam-configure, openam-site-configure, openam-realm-configure, openam-cts-configure, install-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  environment:
+    JAVA_HOME: "{{ jdk_location }}"
+  roles:
+      - { role: store-pass }
+      - { role: openam-realm-configure }
+      - { role: openam-cts-configure }
+      - { role: openam-configure }
+      - { role: openam-site-configure }
+
+- name: Copy boot.json
+  hosts: [ OpenAMMachines ]
+  tags: [ copy-boot.json, install-everything ]
+  tasks:
+  serial: 1
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: copy-boot.json }
+
+- name: Install Ping Proxy
+  hosts: [ PingProxyMachines ]
+  serial:
+  - 1
+  - 3
+  tags: [ ping-proxy-install, install-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: ping-proxy-install }
+
+- name: Install Ping Sync
+  hosts: [ PingSyncMachines ]
+  serial:
+  - 1
+  - 3
+  tags: [ ping-sync-install, install-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: ping-sync-install }
+
+- name: Install Ping Metrics
+  hosts: [ PingMetricsMachines ]
+  tags: [ ping-metrics-install, install-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: ping-metrics-install }
+
+
+
+#######################         UNINSTALL    ##############################
+
+- name: Uninstall Ping Directory
+  hosts: [ PingDirectoryMachines ]
+  tags: [ uninstall-ping-directory, uninstall-directories, uninstall-everything ]
+  tasks:
+  serial: 1
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: uninstall-ping-directory }
+
+- name: Uninstall OpenDJ
+  hosts: [ OpenDJMachines ]
+  tags: [ uninstall-opendj, uninstall-directories, uninstall-everything ]
+  tasks:
+  serial: 1
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  environment:
+    OPENDJ_JAVA_HOME: "{{ jdk_location }}"
+  roles:
+      - { role: uninstall-opendj }
+
+- name: Uninstall Ping Proxy
+  hosts: PingProxyMachines
+  tags: [ uninstall-ping-proxy, uninstall-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: uninstall-ping-proxy }
+
+- name: Uninstall Ping Sync
+  hosts: PingSyncMachines
+  tags: [ uninstall-ping-sync, uninstall-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: uninstall-ping-sync }
+
+- name: Uninstall Ping Metrics
+  hosts: PingMetricsMachines
+  tags: [ uninstall-ping-metrics, uninstall-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: uninstall-ping-metrics }
+
+- name: Uninstall OpenAM
+  hosts: [ OpenAMMachines ]
+  tags: [ uninstall-openam, uninstall-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: uninstall-openam }
+
+- name: Uninstall SSOAdminTools
+  hosts: dallvoamap010u.vtitel.net
+  tags: [ uninstall-ssoadm, uninstall-everything ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: uninstall-ssoadm }
+
+- name: Uninstall OpenAM Realm
+  hosts: dallvoamap010u.vtitel.net
+  tags: [ uninstall-openam-realm ]
+  tasks:
+  gather_facts: True
+  vars_files:
+      - infra-vars.yml
+  become: yes
+  become_user: "{{ func_user }}"
+  roles:
+      - { role: uninstall-openam-realm }

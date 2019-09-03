@@ -1,0 +1,21 @@
+dsconfig set-log-publisher-prop --publisher-name "Failed Operations Access Logger" --set log-file:{{ ping_metrics_log_location }}/failed-ops --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Access Logger" --set log-file:{{ ping_metrics_log_location }}/access --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Audit Logger" --set log-file:{{ ping_metrics_log_location }}/audit --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Debug Logger" --set log-file:{{ ping_metrics_log_location }}/debug --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Error Logger" --set log-file:{{ ping_metrics_log_location }}/errors --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "HTTP Detailed Access" --set log-file:{{ ping_metrics_log_location }}/http-detailed-access --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "JSON Access Logger" --set log-file:{{ ping_metrics_log_location }}/access.json --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "JSON Error Logger" --set log-file:{{ ping_metrics_log_location }}/errors.json --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Debug ACI Logger" --set log-file:{{ ping_metrics_log_location }}/debug-aci --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Server SDK Extension Debug Logger" --set log-file:{{ ping_metrics_log_location }}/server-sdk-extension-debug --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Successful Searches with No Entries Returned" --set log-file:{{ ping_metrics_log_location }}/searches-returning-no-entries --set log-file-permissions:640

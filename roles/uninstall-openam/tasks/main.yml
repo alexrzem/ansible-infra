@@ -1,0 +1,38 @@
+---
+
+- name: Check if PID file exists
+  stat:
+    path: "{{ tomcat_server }}/bin/catalina.pid"
+  register: pid_file_result
+
+- name: Get contents of PID file from the location CATALINA_PID
+  shell: cat {{ tomcat_server }}/bin/catalina.pid
+  register: tomcatpid
+  when: pid_file_result.stat.exists == True
+
+- name: Stop Tomcat
+  shell: "{{ tomcat_server }}/bin/shutdown.sh"
+  delay: 20
+  ignore_errors: yes
+
+- name: kill the process on the basis of tomcat pid
+  shell: kill -9 {{ tomcatpid.stdout }}
+  when: pid_file_result.stat.exists == True
+  ignore_errors: yes
+
+- name: Delete OpenAM folders
+  command: "rm -rf installs/forgerock/ softwares/openam/ logs"
+  args:
+    chdir: "/opt/app/"
+
+- name: Delete openamcfg folder from home
+  command: "rm -rf .openamcfg/"
+  args:
+    chdir: "/home/{{ func_user }}/"
+
+- name: Delete installs folder
+  file: path={{ openam_location }} state=absent
+
+- name: Delete softwares folder
+  file: path="/opt/app/softwares" state=absent
+

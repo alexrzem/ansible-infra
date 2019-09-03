@@ -1,0 +1,78 @@
+---
+
+##
+# Description: This task enables replicaiton on all the PDS hosts in an environment.
+##
+
+- name: Copy over the root user password file
+  template: src=ping_root_password.pwd  dest={{ ping_location }} mode=0400
+
+# Here {{item}} refers to Ping Directory Machines which will be incorporated one by one into the items (using 'with_items')
+# We are running this task from one Primary PDS instance and using 'with_items' the hosts are given as input one by one to enable replicaion.
+
+- name: 'Replication of pds user store'
+  command: './dsreplication enable \
+          --host1 {{ ansible_fqdn }} \
+          --port1 {{ ping_directory_secure_port }} \
+          --bindDN1 {{ ping_directory_root_user }} \
+          --bindPasswordFile1 {{ ping_directory_root_password_location }} \
+          --useSSL1 \
+          --host2 {{ item }} \
+          --port2 {{ ping_directory_secure_port }} \
+          --bindDN2 {{ ping_directory_root_user }} \
+          --bindPasswordFile2 {{ ping_directory_root_password_location }} \
+          --useSSL2 \
+          --replicationPort1 {{ ping_proxy_replication_port }} \
+          --replicationPort2 {{ ping_proxy_replication_port }} \
+          --baseDN {{ userstore_suffix }} \
+          --adminUID admin \
+          --adminPasswordFile {{ ping_directory_root_password_location }} \
+          --no-prompt \
+          --trustAll'
+  args:
+    chdir: "{{ ping_bin_location }}"
+  with_items: "{{ pds_hosts }}"
+
+- name: 'Initialize replication'
+  command: './dsreplication initialize-all \
+          --adminUID admin \
+          --adminPasswordFile {{ ping_directory_root_password_location }} \
+          --trustAll \
+          --no-prompt \
+          --baseDN {{ userstore_suffix }} \
+          --hostname {{ ansible_fqdn }} \
+          --port {{ ping_directory_port }} '
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+- name: Change replication db location
+  command: './dsconfig set-replication-server-prop \
+         --provider-name "Multimaster Synchronization" \
+         --set replication-db-directory:"{{ ping_directory_db_location }}/changelogDb" \
+         --hostname {{ ansible_fqdn }} \
+         --port {{ ping_directory_port }} \
+         --bindDN {{ ping_directory_root_user }} \
+         --bindPassword {{ ping_root_password }} \
+         --applyChangeTo server-group \
+         --no-prompt'
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+- name: Stopping Ping Directory
+  command: "./stop-ds"
+  args:
+    chdir: "{{ ping_bin_location }}"
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['PingDirectoryMachines'] }}"
+
+- name: Move the old replication db
+  command: "mv {{ ping_home }}/changelogDb {{ ping_directory_db_location }}/changelogDb"
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['PingDirectoryMachines'] }}"
+
+- name: Starting Ping Directory
+  command: "./start-ds"
+  args:
+    chdir: "{{ ping_bin_location }}"
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['PingDirectoryMachines'] }}"

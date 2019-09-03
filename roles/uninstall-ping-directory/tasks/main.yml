@@ -1,0 +1,56 @@
+---
+
+- name: Copy over the root user password file
+  template: src=ping_root_password.pwd  dest={{ ping_location }} mode=0400  
+
+- name: Start Ping Directory
+  command: "./start-ds"
+  failed_when: not "'Running' in /opt/app/installs/pds/logs/server.status"
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+- name: Disable replication
+  command: './dsreplication disable \
+            --hostname {{ ansible_fqdn }} \
+            --port {{ ping_directory_port }} \
+            --adminUid admin \
+            --adminPasswordFile {{ ping_directory_root_password_location }} \
+            --disableAll \
+            --no-prompt \
+            --quiet \
+            --script-friendly \
+            --trustAll'
+  args:
+    chdir: "{{ ping_bin_location }}"
+  ignore_errors: yes
+
+- name: Stopping Ping Directory
+  command: "./stop-ds"
+  failed_when: not "'Running' in /opt/app/installs/pds/logs/server.status"
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+- wait_for:
+    host: "{{ ansible_fqdn }}"
+    port: "{{ ping_proxy_port }}"
+    delay: 2
+    state: stopped
+
+- name: Uninstall Ping Directory
+  command: "./uninstall --cli --remove-all --no-prompt --quiet --external-files"
+  args:
+    chdir: "{{ ping_home }}"
+
+- name: Delete Ping Folders
+  command: "rm -rf pds/ ping_root_password.pwd top.ldif pds_config.dsconfig"
+  args:
+    chdir: "{{ ping_location }}"
+
+- name: Delete Ping Backup Folders
+  file: path={{ ping_directory_backup_location }} state=absent
+
+- name: Delete Ping DB Folder
+  file: path={{ ping_directory_db_location }} state=absent
+
+- name: Delete Ping Log Folders
+  file: path={{ ping_directory_log_location }} state=absent

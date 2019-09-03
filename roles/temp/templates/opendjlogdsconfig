@@ -1,0 +1,22 @@
+set-log-rotation-policy-prop --policy-name "Size Limit Rotation Policy" --set "file-size-limit:200 mb"
+
+create-log-retention-policy --policy-name "File Count Retention Policy 3" --type file-count --set number-of-files:3
+
+create-log-retention-policy --policy-name "File Count Retention Policy 7" --type file-count --set number-of-files:7
+
+set-log-publisher-prop --publisher-name "File-Based Access Logger" --set log-file-permissions:640 --set log-file:{{ openDJ_log_location }}/access --set enabled:true --remove "rotation-policy:24 Hours Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 7"
+
+set-log-publisher-prop --publisher-name "File-Based Audit Logger" --set log-file-permissions:640 --set log-file:{{ openDJ_log_location }}/audit --set enabled:true --remove "rotation-policy:24 Hours Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 3"
+
+set-log-publisher-prop --publisher-name "File-Based Debug Logger" --set log-file-permissions:640 --set log-file:{{ openDJ_log_location }}/debug --set enabled:false
+
+set-log-publisher-prop --publisher-name "File-Based Error Logger" --set log-file-permissions:640 --set log-file:{{ openDJ_log_location }}/errors --set enabled:true --remove "rotation-policy: 7 Days Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 7"
+
+set-log-publisher-prop --publisher-name "File-Based HTTP Access Logger" --set log-file-permissions:640 --set log-file:{{ openDJ_log_location }}/http-access-logs --set enabled:true --remove "rotation-policy:24 Hours Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 3"
+
+
+set-log-publisher-prop --publisher-name "Json File-Based Access Logger" --set log-directory:{{ openDJ_log_location }} --set enabled:false
+
+set-log-publisher-prop --publisher-name "Json File-Based HTTP Access Logger" --set log-directory:{{ openDJ_log_location }} --set enabled:false
+
+set-log-publisher-prop --publisher-name "Replication Repair Logger" --set log-file-permissions:640 --set log-file:{{ openDJ_log_location }}/replication --set enabled:true --remove "rotation-policy: 7 Days Time Limit Rotation Policy" --remove "retention-policy:File Count Retention Policy" --add "retention-policy:File Count Retention Policy 7"

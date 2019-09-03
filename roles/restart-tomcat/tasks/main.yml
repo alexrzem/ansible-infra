@@ -1,0 +1,13 @@
+- name: Get contents of PID file from the location CATALINA_PID
+  shell: cat {{ tomcat_server }}/bin/catalina.pid
+  register: tomcatpid
+
+- name: debug the contents of the tomcat pid file
+  debug: var=tomcatpid
+
+- name: kill the process on the basis of tomcat pid
+  shell: kill -9 {{ tomcatpid.stdout }}
+
+- name: Start Tomcat
+  shell: "nohup {{ tomcat_server }}/bin/startup.sh"
+  delay: 20

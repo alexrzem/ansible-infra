@@ -1,0 +1,81 @@
+#!/bin/bash
+#
+# description: PDS init script
+# processname: pds
+# chkconfig: 234 20 80
+ 
+#Location of JAVA_HOME (bin files)
+export JAVA_HOME={{ jdk_location }}
+ 
+#Add Java binary files to PATH
+export PATH=$JAVA_HOME/bin:$PATH
+
+#PDS_HOME is the default user
+PDS_HOME={{ ping_home }}
+
+#PDS_USER is the default user
+export PDS_USER={{ func_user }}
+ 
+#PDS_USAGE is the message if this script is called without any options
+PDS_USAGE="Usage: $0 {\e[00;32mstart\e[00m|\e[00;31mstop\e[00m|\e[00;31mrestart\e[00m}"
+ 
+#SHUTDOWN_WAIT is wait time in seconds for java proccess to stop
+SHUTDOWN_WAIT=20
+ 
+pds_pid() {
+        echo `ps -fe | grep $PDS_HOME | grep -v grep | tr -s " "|cut -d" " -f2`
+}
+ 
+start() {
+  pid=$(pds_pid)
+  if [ -n "$pid" ]
+  then
+    echo -e "\e[00;31mPDS is already running (pid: $pid)\e[00m"
+  else
+    # Start PDS
+    echo -e "\e[00;32mStarting PDS\e[00m"
+    /bin/su $PDS_USER -c $PDS_HOME/bin/start-ds
+  fi
+  return 0
+}
+ 
+stop() {
+  pid=$(pds_pid)
+  if [ -n "$pid" ]
+  then
+    echo -e "\e[00;31mStoping PDS\e[00m"
+    #/bin/su -p -s /bin/sh $PDS_USER
+        sh $PDS_HOME/bin/stop-ds
+ 
+    let kwait=$SHUTDOWN_WAIT
+    count=0;
+    until [ `ps -p $pid | grep -c $pid` = '0' ] || [ $count -gt $kwait ]
+    do
+      echo -n -e "\n\e[00;31mwaiting for processes to exit\e[00m";
+      sleep 1
+      let count=$count+1;
+    done
+ 
+  else
+    echo -e "\e[00;31mPDS is not running\e[00m"
+  fi
+ 
+  return 0
+}
+ 
+case $1 in
+	start)
+	  start
+	;;
+	stop)  
+	  stop
+	;;
+	restart)
+	  stop
+	  start
+	;;
+	*)
+		echo -e $PDS_USAGE
+	;;
+esac    
+exit 0

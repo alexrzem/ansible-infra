@@ -1,0 +1,7 @@
+---
+
+- name: Copy .keypass
+  template: src=.keypass dest={{ keypass_password_location }} mode=0400
+
+- name: Copy .storepass
+  template: src=.storepass dest={{ storepass_password_location }} mode=0400

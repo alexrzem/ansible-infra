@@ -1,0 +1,81 @@
+#!/bin/bash
+#
+# description: PDM init script
+# processname: pdm
+# chkconfig: 234 20 80
+ 
+#Location of JAVA_HOME (bin files)
+export JAVA_HOME={{ jdk_location }}
+ 
+#Add Java binary files to PATH
+export PATH=$JAVA_HOME/bin:$PATH
+
+#PDM_HOME is the default user
+PDM_HOME={{ ping_metrics_home }}
+
+#PDM_USER is the default user
+export PDM_USER={{ func_user }}
+ 
+#PDM_USAGE is the message if this script is called without any options
+PDM_USAGE="Usage: $0 {\e[00;32mstart\e[00m|\e[00;31mstop\e[00m|\e[00;31mrestart\e[00m}"
+ 
+#SHUTDOWN_WAIT is wait time in seconds for java proccess to stop
+SHUTDOWN_WAIT=20
+ 
+pdm_pid() {
+        echo `ps -fe | grep $PDM_HOME | grep -v grep | tr -s " "|cut -d" " -f2`
+}
+ 
+start() {
+  pid=$(pdm_pid)
+  if [ -n "$pid" ]
+  then
+    echo -e "\e[00;31mPDM is already running (pid: $pid)\e[00m"
+  else
+    # Start PDM
+    echo -e "\e[00;32mStarting PDM\e[00m"
+    /bin/su $PDM_USER -c $PDM_HOME/bin/start-metrics-engine
+  fi
+  return 0
+}
+ 
+stop() {
+  pid=$(pdm_pid)
+  if [ -n "$pid" ]
+  then
+    echo -e "\e[00;31mStoping PDM\e[00m"
+    #/bin/su -p -s /bin/sh $PDM_USER
+        sh $PDM_HOME/bin/stop-metrics-engine
+ 
+    let kwait=$SHUTDOWN_WAIT
+    count=0;
+    until [ `ps -p $pid | grep -c $pid` = '0' ] || [ $count -gt $kwait ]
+    do
+      echo -n -e "\n\e[00;31mwaiting for processes to exit\e[00m";
+      sleep 1
+      let count=$count+1;
+    done
+ 
+  else
+    echo -e "\e[00;31mPDM is not running\e[00m"
+  fi
+ 
+  return 0
+}
+ 
+case $1 in
+	start)
+	  start
+	;;
+	stop)  
+	  stop
+	;;
+	restart)
+	  stop
+	  start
+	;;
+	*)
+		echo -e $PDM_USAGE
+	;;
+esac    
+exit 0

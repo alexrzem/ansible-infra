@@ -1,0 +1,5 @@
+org.forgerock.services.cts.store.location=external 
+org.forgerock.services.cts.store.ssl.enabled=true 
+org.forgerock.services.cts.store.max.connections=10 
+org.forgerock.services.cts.store.heartbeat=10
+org.forgerock.services.cts.store.affinity.enabled=true

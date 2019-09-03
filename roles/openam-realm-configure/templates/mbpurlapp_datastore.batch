@@ -1,0 +1,12 @@
+update-datastore -e /MBPURLAPP -m PDS_MBUS --attributevalues sun-idrepo-ldapv3-config-authid={{ user_store_admin }}
+update-datastore -e /MBPURLAPP -m PDS_MBUS --attributevalues sun-idrepo-ldapv3-config-authpw={{opendj_root_password}}
+update-datastore -e /MBPURLAPP -m PDS_MBUS --attributevalues sun-idrepo-ldapv3-config-organization_name=ou=MBUS,ou=external,dc=verizontelematics,dc=com
+update-datastore -e /MBPURLAPP -m PDS_MBUS --attributevalues sun-idrepo-ldapv3-config-connection-mode=LDAPS
+update-datastore -e /MBPURLAPP -m PDS_MBUS --attributevalues sun-idrepo-ldapv3-config-users-search-attribute=cn
+update-datastore -e /MBPURLAPP -m PDS_MBUS --attributevalues sun-idrepo-ldapv3-config-people-container-value=users
+update-datastore -e /MBPURLAPP -m PDS_MBUS --attributevalues sun-idrepo-ldapv3-config-createuser-attr-mapping=mail
+update-datastore -e /MBPURLAPP -m PDS_MBUS --attributevalues sun-idrepo-ldapv3-config-isactive=ds-pwp-account-disabled
+update-datastore -e /MBPURLAPP -m PDS_MBUS --attributevalues sun-idrepo-ldapv3-config-active=FALSE
+update-datastore -e /MBPURLAPP -m PDS_MBUS --attributevalues sun-idrepo-ldapv3-config-inactive=TRUE
+update-datastore -e /MBPURLAPP -m PDS_MBUS --attributevalues sun-idrepo-ldapv3-config-auth-naming-attr=cn
+update-datastore -e /MBPURLAPP -m PDS_MBUS --attributevalues sun-idrepo-ldapv3-config-users-search-filter=(objectclass=VTIPerson)

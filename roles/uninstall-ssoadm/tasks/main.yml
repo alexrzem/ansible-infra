@@ -1,0 +1,6 @@
+---
+
+- name: Delete ssoadm Folders
+  command: "rm -rf AdminTools/"
+  args:
+    chdir: "{{ forgerock_location }}/"

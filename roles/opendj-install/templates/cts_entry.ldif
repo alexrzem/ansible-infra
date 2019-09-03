@@ -1,0 +1,117 @@
+dn: ou=AdminGroups,{{ cts_base_dn }}
+objectClass: organizationalUnit
+objectClass: top
+ou: AdminGroups
+
+dn: cn=openAMctsAdmin,ou=AdminGroups,{{ cts_base_dn }}
+objectClass: groupofUniqueNames
+objectClass: top
+cn: openAMctsAdmin
+description: openAM Admin role
+uniqueMember: cn=oamctsadmin,ou=admins,{{ cts_base_dn }}
+
+dn: ou=admins,{{ cts_base_dn }}
+objectClass: organizationalunit
+objectClass: top
+ou: admins
+
+dn: cn=oamctsadmin,ou=admins,{{ cts_base_dn }}
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: top
+cn: oamctsadmin
+sn: oamctsadmin
+uid: oamctsadmin
+userPassword: {{opendj_root_password}}
+ds-privilege-name: update-schema
+ds-privilege-name: subentry-write
+ds-privilege-name: password-reset
+ds-privilege-name: unindexed-search
+ds-rlim-lookthrough-limit: 0
+ds-rlim-size-limit: 5000
+
+dn: dc=openam,dc=verizontelematics,dc=com
+changetype: add
+objectClass: domain
+objectClass: top
+dc: openam
+
+dn: ou=AdminGroups,dc=openam,dc=verizontelematics,dc=com
+objectClass: organizationalUnit
+objectClass: top
+ou: AdminGroups
+
+dn: cn=openAMcfgAdmin,ou=AdminGroups,dc=openam,dc=verizontelematics,dc=com
+objectClass: groupofUniqueNames
+objectClass: top
+cn: openAMcfgAdmin
+description: openAM Admin role
+uniqueMember: cn=oamcfgadmin,ou=admins,dc=openam,dc=verizontelematics,dc=com
+ds-privilege-name: update-schema
+ds-privilege-name: subentry-write
+
+dn: ou=admins,dc=openam,dc=verizontelematics,dc=com
+objectClass: organizationalunit
+objectClass: top
+ou: admins
+
+dn: cn=oamcfgadmin,ou=admins,dc=openam,dc=verizontelematics,dc=com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: top
+cn: oamcfgadmin Administrator
+sn: oamcfgadmin
+uid: oamcfgadmin
+userPassword: {{opendj_root_password}}
+
+dn: {{ cts_base_dn }}
+changetype: modify
+add: aci
+aci:(targetattr="*")(version 3.0;acl "Allow all access to admin group"; allow (all)(groupdn = "ldap:///cn=openAMctsAdmin,ou=AdminGroups,{{ cts_base_dn }}");)
+
+dn: {{ cts_base_dn }}
+changetype: modify
+add: aci
+aci:(targetattr="*")(version 3.0;acl "Allow entry search"; allow (search, read)(groupdn = "ldap:///cn=openAMctsAdmin,ou=AdminGroups,{{ cts_base_dn }}");)
+
+dn: {{ cts_base_dn }}
+changetype: modify
+add: aci
+aci:(targetattr="*")(version 3.0;acl "Modify entries"; allow (write)(groupdn = "ldap:///cn=openAMctsAdmin,ou=AdminGroups,{{ cts_base_dn }}");)
+
+dn: {{ cts_base_dn }}
+changetype: modify
+add: aci
+aci:(targetcontrol="2.16.840.1.113730.3.4.3")(version 3.0; acl "Allow persistentsearch";allow (search, read)(groupdn = "ldap:///cn=openAMctsAdmin,ou=AdminGroups,{{ cts_base_dn }}");)
+
+dn: {{ cts_base_dn }}
+changetype: modify
+add: aci
+aci:(targetcontrol="1.3.6.1.1.12")(version 3.0; acl "Authenticated users control access"; allow(read)(groupdn = "ldap:///cn=openAMctsAdmin,ou=AdminGroups,{{ cts_base_dn }}");)
+
+dn: {{ cts_base_dn }}
+changetype: modify
+add: aci
+aci:(version 3.0;acl "Add config entry"; allow (add)(groupdn = "ldap:///cn=openAMctsAdmin,ou=AdminGroups,{{ cts_base_dn }}");)
+
+dn: {{ cts_base_dn }}
+changetype: modify
+add: aci
+aci:(version 3.0;acl "Delete entries"; allow (delete)(groupdn = "ldap:///cn=openAMctsAdmin,ou=AdminGroups,{{ cts_base_dn }}");)
+
+dn: dc=openam,dc=verizontelematics,dc=com
+changetype: modify
+add: aci
+aci:(targetattr="*")(version 3.0;acl "Allow CRUDQ operations"; allow (search, read, write, add, delete)(groupdn = "ldap:///cn=openAMcfgAdmin,ou=AdminGroups,dc=openam,dc=verizontelematics,dc=com");)
+
+dn: dc=openam,dc=verizontelematics,dc=com
+changetype: modify
+add: aci
+aci:(targetcontrol="1.2.840.113556.1.4.473")(version 3.0; acl "Allow server-side sorting"; allow (read) (groupdn = "ldap:///cn=openAMcfgAdmin,ou=AdminGroups,dc=openam,dc=verizontelematics,dc=com");)
+
+dn: dc=openam,dc=verizontelematics,dc=com
+changetype: modify
+add: aci
+aci:(targetcontrol="2.16.840.1.113730.3.4.3")(version 3.0;acl "Allow persistent search"; allow (search, read)(groupdn = "ldap:///cn=openAMcfgAdmin,ou=AdminGroups,dc=openam,dc=verizontelematics,dc=com");)

@@ -1,0 +1,28 @@
+---
+
+- name: Copy the server.xml file to conf
+  template: src=server.xml dest={{ tomcat_server }}/conf/server.xml force=yes  mode=0644
+
+- name: Copy the web.xml file to conf
+  template: src=web.xml dest={{ tomcat_server }}/conf/web.xml force=yes  mode=0644
+
+- name: Copy the context.xml file to conf
+  template: src=context.xml dest={{ tomcat_server }}/conf/context.xml force=yes  mode=0644
+
+- name: Copy the error.jsp file
+  template: src=error.jsp dest={{ tomcat_server }}/webapps/{{ openam_context }} force=yes  mode=0644
+
+- name: Delete docs in tomcat webapps
+  file: path={{ tomcat_server }}/webapps/docs state=absent
+
+- name: Delete examples in tomcat webapps
+  file: path={{ tomcat_server }}/webapps/examples state=absent
+
+- name: Delete host-manager in tomcat webapps
+  file: path={{ tomcat_server }}/webapps/host-manager state=absent
+
+- name: Delete manager in tomcat webapps
+  file: path={{ tomcat_server }}/webapps/manager state=absent
+
+- name: Delete ROOT in tomcat webapps
+  file: path={{ tomcat_server }}/webapps/ROOT state=absent

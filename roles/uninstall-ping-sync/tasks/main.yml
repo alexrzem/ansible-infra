@@ -1,0 +1,23 @@
+---
+
+- name: Stopping Ping Sync
+  command: "./stop-sync-server"
+  failed_when: not "'Running' in {{ ping_sync_home }}/logs/server.status"
+  args:
+    chdir: "{{ ping_sync_bin }}"
+
+- name: Uninstall Ping Sync
+  command: "./uninstall --cli --remove-all --external-files --no-prompt --quiet"
+  args:
+    chdir: "{{ ping_sync_home }}"
+
+- name: Delete Ping Sync Folders
+  command: "rm -rf pss/"
+  args:
+    chdir: "{{ ping_location }}"
+
+- name: Delete the logs folder
+  file: path="{{ ping_sync_log_location }}" state=absent
+
+- name: Delete the installs folder
+  file: path="{{ ping_location }}" state=absent

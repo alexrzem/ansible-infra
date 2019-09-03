@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<!--
+DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
+
+Copyright (c) 2005 Sun Microsystems Inc. All Rights Reserved
+
+The contents of this file are subject to the terms
+of the Common Development and Distribution License
+(the License). You may not use this file except in
+compliance with the License.
+
+You can obtain a copy of the License at
+https://opensso.dev.java.net/public/CDDLv1.0.html or
+opensso/legal/CDDLv1.0.txt
+See the License for the specific language governing
+permission and limitations under the License.
+
+When distributing Covered Code, include this CDDL
+Header Notice in each file and include the License file
+at opensso/legal/CDDLv1.0.txt.
+If applicable, add the following below the CDDL Header,
+with the fields enclosed by brackets [] replaced by
+your own identifying information:
+"Portions Copyrighted [year] [name of copyright owner]"
+
+$Id: serverconfig.xml,v 1.15 2008/11/06 05:31:02 veiming Exp $
+
+Portions Copyright 2015 ForgeRock AS.
+-->
+
+
+<iPlanetDataAccessLayer>
+<ServerGroup name="default" minConnPool="1" maxConnPool="10">
+<Server name="Server1" host="{{ primary_config_store_directory_server }}" port="{{ opendj_directory_secure_port }}" type="SSL" />
+<User name="User1" type="proxy">
+<DirDN>cn=puser,ou=DSAME Users,dc=openam,dc=verizontelematics,dc=com</DirDN>
+<DirPassword>{{ am_encrypted_password.stdout }}</DirPassword>
+</User>
+<User name="User2" type="admin">
+<DirDN>cn=dsameuser,ou=DSAME Users,dc=openam,dc=verizontelematics,dc=com</DirDN>
+<DirPassword>{{ am_encrypted_password.stdout }}</DirPassword>
+</User>
+<BaseDN>{{ config_base_dn }}</BaseDN>
+</ServerGroup>
+<ServerGroup name="sms" minConnPool="1" maxConnPool="10">
+{% set count = 1 %}
+{% for item in config_store_group %}
+<Server name="Server{{ count }}" host="{{ item }}" port="{{ opendj_directory_secure_port }}" type="SSL" />
+{% set count = count + 1 %}
+{% endfor %}
+<User name="User2" type="admin">
+<DirDN>{{ config_store_admin }}</DirDN>
+<DirPassword>{{ am_encrypted_password.stdout }}</DirPassword>
+</User>
+<BaseDN>{{ config_base_dn }}</BaseDN>
+</ServerGroup>
+</iPlanetDataAccessLayer>

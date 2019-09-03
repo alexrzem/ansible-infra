@@ -1,0 +1,11 @@
+dn: cn=schema
+objectClass: top
+objectClass: ldapSubentry
+objectClass: subschema
+cn: schema
+attributeTypes: ( 1.3.6.1.4.1.49737.1.1.2 NAME 'VVSiebelContactID' DESC 'VVSiebelContactID' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE USAGE userApplications )
+attributeTypes: ( 1.3.6.1.4.1.49737.1.1.1 NAME 'VVAccountStatus' DESC 'VVAccountStatus' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubStringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE USAGE userApplications )
+attributeTypes: ( 1.3.6.1.4.1.49737.1.1.3 NAME 'WIFIPassword' DESC 'WIFIPassword' EQUALITY caseExactMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE USAGE userApplications )
+objectClasses: ( 1.3.6.1.4.1.49737.1.2.2 NAME 'VTIPerson' DESC 'VTIPerson' SUP top STRUCTURAL MUST ( cn $ uid ) MAY ( VVAccountStatus $ VVSiebelContactID $ givenName $ mail $ sn $ userPassword ) )
+objectClasses: ( 1.3.6.1.4.1.49737.1.2.1 NAME 'VTIDevice' DESC 'VTIDevice' SUP top STRUCTURAL MAY ( WIFIPassword $ cn ) )
+

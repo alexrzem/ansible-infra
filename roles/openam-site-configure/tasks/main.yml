@@ -1,0 +1,26 @@
+---
+
+##
+# Description: This task configures sites and maps servers to site for the OpenAM. This task is 
+# performed on only one OpenAM instance which is the primary node
+##
+
+- name: Copy root user password file
+  template: src=openam_root_password.pwd dest={{openam_location}} mode=0400
+
+- name: Create Sites
+  command: ./ssoadm create-site --sitename {{ item }} --siteurl {{ primary_site_creation_url }} -u amadmin -f {{ openam_root_password_location }}
+  args: 
+    chdir: "{{ ssoadm_location }}"
+  with_items: "{{ sites }}"
+
+- name: Add site members
+  command: "./ssoadm add-site-members --sitename {{ site_name }} --servernames https://{{ item }}:{{ tomcat_secure_port }}/{{openam_context}} --adminid amadmin --password-file {{openam_root_password_location}}"
+  args: 
+    chdir: "{{ssoadm_location}}"
+  with_items: "{{ groups['OpenAMMachines'] }}"
+
+- name: Purge assets
+  command: 'rm -rf openam_root_password.pwd'
+  args:
+    chdir: "{{ openam_location }}"

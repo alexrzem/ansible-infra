@@ -1,0 +1,5 @@
+keystore_password : passwordA
+opendj_root_password : passwordB
+ping_root_password : passwordC
+openam_amadmin_password : passwordD
+openam_url_agent_password : passwordE

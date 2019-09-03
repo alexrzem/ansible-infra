@@ -1,0 +1,26 @@
+---
+
+- name: Copy over the root user password file
+  template: src=ping_root_password.pwd  dest={{ ping_location }} mode=0400
+
+- name: Copy over the dsconfig batch file
+  template: src=ppslogdsconfig  dest={{ ping_location }} mode=0400
+
+- name: Run dsconfig batch file
+  command: './dsconfig \
+          --hostname {{ ansible_fqdn }} \
+          --port {{ ping_directory_port }} \
+          --bindDN {{ ping_directory_root_user }} \
+          --bindPasswordFile {{ ping_directory_root_password_location }} \
+          --no-prompt \
+          --applyChangeTo server-group \
+          --batch-file {{ping_location}}/ppslogdsconfig '
+  args:
+    chdir: "{{ ping_proxy_bin }}"
+
+- name: Purge asset
+  file: path="{{ ping_location }}/ping_root_password.pwd" state=absent
+
+- name: Purge asset
+  file: path="{{ ping_location }}/ppslogdsconfig" state=absent
+

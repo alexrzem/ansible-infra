@@ -1,0 +1,21 @@
+#
+#Status Extension
+#
+
+dsconfig create-http-servlet-extension --extension-name Status --type third-party --set "description:Reports Ping Directory service availability" --set extension-class:com.unboundid.ops.StatusServletExtension --set extension-argument:path=/status
+dsconfig set-connection-handler-prop --handler-name "HTTPS Connection Handler"  --set enabled:false --add http-servlet-extension:Status
+dsconfig set-connection-handler-prop --handler-name "HTTPS Connection Handler"  --set enabled:true
+
+
+#
+#PWP User State Extension
+#
+
+dsconfig create-plugin --plugin-name "Password Policy User State" --type third-party --set enabled:true --set plugin-type:preparsemodify --set plugin-type:searchresultentry --set extension-class:com.pingidentity.ds.plugin.PwpUserState
+
+
+#
+#PWP User State Extension
+#
+
+dsconfig create-plugin --plugin-name "oid compat" --type third-party --set enabled:true --set plugin-type:postoperationbind --set invoke-for-internal-operations:false --set extension-class:com.pingidentity.ds.plugin.OIDCompat --set "extension-argument:account-disabled-message=Disabled : Password Policy Error :9050: GSL_ACCOUNTDISABLED_EXCP : Your account is disabled" --set extension-argument:account-disabled-code=53 --set extension-argument:account-failure-locked-code=49 --set "extension-argument:account-failure-locked-message=Locked : Password Policy Error :9001: GSL_ACCOUNTLOCKED_EXCP : Your account is locked"

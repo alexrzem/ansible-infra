@@ -1,0 +1,4 @@
+create-datastore -e /{{ ford_realm_name }} -m {{fordapp_datastore_name}} -t LDAPv3ForOpenDS --attributevalues sun-idrepo-ldapv3-config-ldap-server={{userstore_host}}:{{ping_directory_secure_port}}
+create-datastore -e /{{ hum_realm_name }} -m {{humapp_datastore_name}} -t LDAPv3ForOpenDS --attributevalues sun-idrepo-ldapv3-config-ldap-server={{userstore_host}}:{{ping_directory_secure_port}}
+create-datastore -e /{{ mercedes_benz_realm_name }} -m {{mbpurlapp_datastore_name}} -t LDAPv3ForOpenDS --attributevalues sun-idrepo-ldapv3-config-ldap-server={{userstore_host}}:{{ping_directory_secure_port}}
+create-datastore -e /{{ volkswagen_realm_name }} -m {{vwpurlapp_datastore_name}} -t LDAPv3ForOpenDS --attributevalues sun-idrepo-ldapv3-config-ldap-server={{userstore_host}}:{{ping_directory_secure_port}}

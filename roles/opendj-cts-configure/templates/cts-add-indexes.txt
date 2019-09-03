@@ -1,0 +1,52 @@
+create-backend-index --backend-name userRoot --index-name coreTokenExpirationDate \
+  --set index-type:ordering
+create-backend-index --backend-name userRoot --index-name coreTokenUserId \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenString01 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenString02 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenString03 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenString05 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenString08 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenString09 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenString10 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenString14 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenString15 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenInteger01 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenInteger02 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenInteger03 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenInteger04 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenInteger05 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenInteger06 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenInteger07 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenInteger08 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenInteger09 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenInteger10 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenDate01 \
+  --set index-type:ordering
+create-backend-index --backend-name userRoot --index-name coreTokenDate02 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenDate03 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenDate04 \
+  --set index-type:equality
+create-backend-index --backend-name userRoot --index-name coreTokenDate05 \
+  --set index-type:equality

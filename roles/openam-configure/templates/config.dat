@@ -1,0 +1,9 @@
+com.iplanet.services.debug.directory={{ openam_log_location }}
+com.iplanet.services.debug.level=message
+com.iplanet.am.lbcookie.name={{lbcookiename}}
+com.iplanet.am.cookie.name={{amcookiename}}
+com.sun.identity.saml.xmlsig.keystore={{keystore_location}}
+com.sun.identity.saml.xmlsig.storetype={{keystore_type}}
+com.sun.identity.saml.xmlsig.storepass={{ storepass_password_location }}
+com.sun.identity.saml.xmlsig.keypass={{ keypass_password_location }}
+com.sun.identity.saml.xmlsig.certalias={{ openam_certificate_nickname }}

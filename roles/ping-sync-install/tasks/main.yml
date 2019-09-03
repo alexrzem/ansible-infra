@@ -1,0 +1,127 @@
+---
+
+##
+# Description: This task installs and configures the Ping Sync.
+##
+
+- name: Create directory for Ping Sync
+  file: state=directory path={{ ping_location }}
+
+- name: Download Ping Sync zip to host
+  get_url: url={{ ping_sync_download_url }}PingDataSync-{{ ping_version }}.zip dest={{ ping_location }}
+
+- name: Unzip the Ping Sync
+  command: '{{ unzip }} PingDataSync-{{ ping_version }}.zip'
+  args:
+    chdir: "{{ ping_location }}"
+
+- name: Rename the folder
+  command: 'mv PingDataSync pss'
+  args:
+    chdir: "{{ ping_location }}"
+
+- name: Delete the Ping Sync zip
+  file: path={{ ping_location }}/PingDataSync-{{ ping_version }}.zip state=absent
+
+- name: Copy over the root user password file
+  template: src=ping_root_password.pwd  dest={{ ping_location }} mode=0400
+
+- name: Copy over the dsconfig batch file
+  template: src=pss_config.dsconfig  dest={{ ping_location }} mode=0600
+  when: data_center_location != "BJI"
+
+- name: Copy over the dsconfig batch file in China
+  template: src=pss_config_china.dsconfig  dest={{ ping_location }} mode=0600
+  when: data_center_location == "BJI"
+
+- name: Create parent log directory
+  file: state=directory path={{ log_parent_directory }} mode=0755
+
+- name: Create log directory for Ping Sync
+  file: state=directory path={{ ping_sync_log_location }}
+
+# Installs Ping Sync in the primary proxy servers based on the when condition (primary==true)
+
+- name: Setup Ping Sync Server
+  command: 'env JAVA_HOME={{ jdk_location }} \
+         ./setup --acceptLicense \
+         --localHostName {{ ansible_fqdn }} \
+         --ldapPort {{ ping_sync_port }} \
+         --rootUserDN {{ ping_sync_root_user }} \
+         --rootUserPasswordFile {{ ping_directory_root_password_location }} \
+         --jvmTuningParameter AGGRESSIVE \
+         --maxHeapSize 5g \
+         --ldapsPort {{ ping_sync_secure_port }} \
+         --httpsPort {{ ping_https_port }} \ 
+         --enableStartTLS \
+         --useJavaKeystore {{ keystore_location }} \
+         --keyStorePassword {{ keystore_password }} \
+         --certNickname {{ certificate_nickname }} \
+         --useJavaTruststore {{ trustore_location }} \
+         --no-prompt'
+  args:
+    chdir: "{{ ping_sync_home }}"
+  when: primary == "true"
+
+# Installs Ping Sync in the secondary sync servers based on the when condition (primary!=true).
+# The configurations are pulled from the primary sync machine
+
+- name: Setup Ping Sync Server
+  command: 'env JAVA_HOME={{ jdk_location }} \
+         ./setup --acceptLicense \
+         --localHostName {{ ansible_fqdn }} \
+         --ldapPort {{ping_sync_port}} \
+         --rootUserDN {{ ping_sync_root_user }} \
+         --rootUserPasswordFile {{ ping_directory_root_password_location }} \
+         --jvmTuningParameter AGGRESSIVE \
+         --maxHeapSize 5g \
+         --ldapsPort {{ ping_sync_secure_port }} \
+         --httpsPort {{ ping_https_port }} \
+         --masterHostName {{ ping_sync_primary_host }} 
+         --masterPort {{ ping_sync_secure_port }} \
+         --masterUseSSL \
+         --enableStartTLS \
+         --useJavaKeystore {{ keystore_location }} \
+         --keyStorePassword {{ keystore_password }} \
+         --certNickname {{ certificate_nickname }} \
+         --useJavaTruststore {{ trustore_location }} \
+         --no-prompt'
+  args:
+    chdir: "{{ ping_sync_home }}"
+  when: primary != "true"
+
+# Runs the dsconfig commands in the primary proxy server based on the when condition (primary==true)
+
+- name: Run dsconfig batch file
+  command: './dsconfig --hostname {{ ansible_fqdn }} --port {{ ping_sync_port }} --bindDN {{ ping_sync_root_user }} --bindPasswordFile {{ ping_directory_root_password_location }} --no-prompt --batch-file {{ping_location}}/pss_config.dsconfig'
+  args:
+    chdir: "{{ ping_sync_bin }}"
+  when: primary == "true" and data_center_location != "BJI"
+
+- name: Run dsconfig batch file
+  command: './dsconfig --hostname {{ ansible_fqdn }} --port {{ ping_sync_port }} --bindDN {{ ping_sync_root_user }} --bindPasswordFile {{ ping_directory_root_password_location }} --no-prompt --batch-file {{ping_location}}/pss_config_china.dsconfig'
+  args:
+    chdir: "{{ ping_sync_bin }}"
+  when: primary == "true" and data_center_location == "BJI"
+
+- name: Delete pss_config.dsconfig file
+  file: path="{{ping_location}}/pss_config.dsconfig" state=absent
+
+- name: Delete ping_root_password.pwd file
+  file: path="{{ping_location}}/ping_root_password.pwd" state=absent
+
+- name: Stop Sync Server
+  command: "./stop-sync-server"
+  args:
+    chdir: "{{ ping_sync_bin }}"
+
+- wait_for:
+    host: "{{ ansible_fqdn }}"
+    port: "{{ ping_sync_port }}"
+    delay: 10
+    state: stopped
+
+- name: Start Sync Server
+  command: "./start-sync-server"
+  args:
+    chdir: "{{ ping_sync_bin }}"

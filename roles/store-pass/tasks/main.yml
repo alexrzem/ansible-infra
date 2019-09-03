@@ -1,0 +1,23 @@
+---
+
+- name: Copy over the keystore password file
+  template: src=keystore_password.pwd  dest={{ ssoadm_location }} mode=0400
+
+- name: Encrypt the password
+  shell: "./ampassword --encrypt keystore_password.pwd"
+  args:
+    chdir: "{{ ssoadm_location }}"
+  register: am_encrypted_keystore_password
+
+- name: Copy over the keypass file
+  template: src=.keypass  dest={{ keypass_password_location }} mode=0400 force=yes
+  delegate_to: "{{item}}"
+  with_items: "{{groups['OpenAMMachines']}}"
+
+- name: Copy over the storepass file
+  template: src=.keypass  dest={{ storepass_password_location }} mode=0400 force=yes
+  delegate_to: "{{item}}"
+  with_items: "{{groups['OpenAMMachines']}}"
+
+- name: Delete the password file
+  file: path="{{ ssoadm_location }}/keystore_password.pwd" state=absent

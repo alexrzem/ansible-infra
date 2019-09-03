@@ -1,0 +1,155 @@
+###############################################################################
+# Ping Directory Variables
+###############################################################################
+
+#Role - ping-directory-replication
+pds_hosts: [atllvpdsap020j.hughestelematics.net]
+ping_directory_backup_location : "{{ping_home_location}}/backups/pds"
+
+
+###############################################################################
+# OpenDJ Variables
+###############################################################################
+
+#Role - opendj-cts-replication
+location:
+         ATL:
+            key: [atllvpdsap020j.hughestelematics.net]
+                
+cts_hosts: "{{ location[data_center_location].key }}"
+
+#Role - opendj-replication
+opendj_hosts: [atllvpdsap020j.hughestelematics.net]
+opendj_backup_location : "{{ opendj_home_location }}/backups/opendj"
+
+
+
+###############################################################################
+# Ping Proxy Variables
+###############################################################################
+
+ping_proxy_primary_host : atllvppsap010j.hughestelematics.net
+data_centers: [ATL]
+ping_proxy_backup_location : "{{ ping_home_location }}/backups/pps"
+
+
+
+###############################################################################
+# Ping Sync Variables
+###############################################################################
+
+ping_sync_primary_host : atllvpssap010j.hughestelematics.net
+
+
+
+###############################################################################
+# OpenAM Variables
+###############################################################################
+
+lbcookiename : JITamlbcookie
+amcookiename : JITamID
+cookie_domain : hughestelematics.net
+openam_encryption_key : kh7SmbetpRAgu37F26LW7Rjaru7fThM3
+openam_certificate_nickname : fed-cert
+
+#Role - openam-cts-configure
+atlanta_servers_connection_string: atllvpdsap010j.hughestelematics.net:2636,atllvpdsap020j.hughestelematics.net:2636
+
+directory_servers_location:
+         ATL:
+            key: "{{ atlanta_servers_connection_string }}"
+       
+directory_servers_connection_string: "{{ directory_servers_location[hostvars[item]['data_center_location']].key }}"
+
+#Role - openam-multiple-config-store
+primary_config_store_directory_server_locations:
+         ATL:
+            key: atllvpdsap010j.hughestelematics.net
+
+primary_config_store_directory_server: "{{ primary_config_store_directory_server_locations[hostvars[item]['data_center_location']].key  }}"
+
+config_store_directory_servers_location:
+         ATL:
+            key: [atllvpdsap010j.hughestelematics.net, atllvpdsap020j.hughestelematics.net]
+       
+config_store_group: "{{ config_store_directory_servers_location[hostvars[item]['data_center_location']].key }}"
+config_store_group_boot_json: "{{ config_store_directory_servers_location[data_center_location].key }}"
+
+
+#Role - openamconf.properties (openam-install)
+atl_directory_server: atllvpdsap010j.hughestelematics.net
+
+directory_server_location:
+         ATL:
+            key: "{{ atl_directory_server }}"
+       
+directory_server: "{{ directory_server_location[data_center_location].key }}"
+
+#Role - openam-realm-configure & openamconf.properties (openam-install)
+userstore_host : pds-jit.vtitel.net
+
+#Role - openam-site-configure
+atlanta_primary_site_url: https://oam-jit.vtitel.net:8443/amserver
+
+primary_site_url_location:
+         ATL:
+            key: "{{ atlanta_primary_site_url }}"
+       
+primary_site_url: "{{ primary_site_url_location[data_center_location].key }}"
+global_site_url: https://oam-jit.vtitel.net:8443/amserver
+
+
+atlanta_site_name: oamatljit
+
+site_location:
+         ATL:
+            key: "{{ atlanta_site_name }}"
+       
+site_name: "{{ site_location[hostvars[item]['data_center_location']].key }}"
+
+sites: ["{{ atlanta_site_name }}"]
+
+primary_site_location:
+         oamatljit:
+            key: "{{ atlanta_primary_site_url }}"
+
+primary_site_creation_url: "{{ primary_site_location[item].key }}"
+
+
+
+###############################################################################
+# Binary Download URL
+###############################################################################
+
+tomcat_download_url : http://10.254.19.44:8081/artifactory/infrastructure/
+tomcat_binary : apache-tomcat-8.5.15
+tomcat_binary_ext : .zip
+openam_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/AM/5.1.0/
+openam_binary : AM-5.1.0
+openam_binary_ext : .war
+ssoconfigurator_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/AM/5.1.0/
+ssoconfigurator_binary : SSOConfiguratorTools-5.1.0
+ssoconfigurator_binary_ext : .zip
+opendj_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/DS/5.0.0/
+opendj_binary : DS-5.0.0
+opendj_binary_ext : .zip
+ping_directory_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/PingDirectory/6.0.1.2/
+ping_proxy_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/PingDirectoryProxy/6.0.1.2/
+ping_sync_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/PingDataSync/6.0.1.2/
+ping_metrics_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/PingDataMetrics/6.0.1.2/
+ssoadmin_download_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/AM/5.1.0/
+ssoadmin_binary : SSOAdminTools-5.1.0
+ssoadmin_binary_ext : .zip
+jdk_download_url : http://10.254.19.44:8081/artifactory/infrastructure/
+jdk_binary : jdk-8u121-linux-x64.tar
+jdk_binary_ext : .gz
+jdk_binary_version : jdk1.8.0_121
+jce_policy_download_url : http://10.254.19.44:8081/artifactory/infrastructure/
+jce_policy_binary : jce_policy-8
+jce_policy_binary_ext : .zip
+status_extension_name : com.unboundid.ops.status-servlet-1.1.2.zip
+ds_plugin_pwp_extension_name : com.pingidentity.ds-plugin-pwp-user-state-1.3.0.4.zip
+ds_plugin_oid_extension_name : com.pingidentity.ds-plugin-oid-compat-bind-result-code-map-0.2.1.1.zip
+pds_status_extension_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/UnboundId/1.1.2/{{ status_extension_name }}
+pds_ds_plugin_pwp_extension_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/PingIdentity/1.3.0.4/{{ ds_plugin_pwp_extension_name }}
+pds_ds_plugin_oid_extension_url : http://10.254.19.44:8081/artifactory/infrastructure/IAM/PingIdentity/0.2.1.1/{{ ds_plugin_oid_extension_name }}

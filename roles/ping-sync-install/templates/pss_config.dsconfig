@@ -1,0 +1,138 @@
+#
+# Status:Log Publishers
+#
+
+dsconfig set-log-publisher-prop --publisher-name "Debug ACI Logger" --set log-file:{{ ping_sync_log_location }}/debug-aci --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Expensive Operations Access Logger" --set log-file:{{ ping_sync_log_location }}/expensive-ops --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Failed Operations Access Logger" --set log-file:{{ ping_sync_log_location }}/failed-ops --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Access Logger" --set log-file:{{ ping_sync_log_location }}/access --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Audit Logger" --set log-file:{{ ping_sync_log_location }}/audit --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Debug Logger" --set log-file:{{ ping_sync_log_location }}/debug --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Error Logger" --set log-file:{{ ping_sync_log_location }}/errors --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "File-Based Sync Logger" --set log-file:{{ ping_sync_log_location }}/sync --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "JSON Access Logger" --set log-file:{{ ping_sync_log_location }}/access.json --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "JSON Error Logger" --set log-file:{{ ping_sync_log_location }}/errors.json --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Server SDK Extension Debug Logger" --set log-file:{{ ping_sync_log_location }}/server-sdk-extension-debug --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Successful Searches with No Entries Returned" --set log-file:{{ ping_sync_log_location }}/searches-returning-no-entries --set log-file-permissions:640
+
+dsconfig set-log-publisher-prop --publisher-name "Sync Failed Ops Logger" --set log-file:{{ ping_sync_log_location }}/sync-failed-ops --set log-file-permissions:640
+
+
+#
+# Status:Creating Locations
+#
+
+{% for item in data_centers %}
+
+dsconfig create-location --location-name {{ item }}
+
+{% endfor %}
+
+#
+# Status:Create external servers
+#
+
+{% for item in groups['PingDirectoryMachines'] %}
+
+dsconfig create-external-server --server-name {{ item }}:{{ ping_directory_secure_port }} --type ping-identity-ds --set server-host-name:{{ item }} --set server-port:{{ ping_directory_secure_port }} --set location:{{ hostvars[item]['data_center_location'] }} --set "bind-dn:cn=Sync User,cn=Root DNs,cn=config" --set password:{{ ping_root_password }} --set connection-security:ssl --set key-manager-provider:Null --set trust-manager-provider:JKS 
+
+{% endfor %}
+
+
+{% for item in groups['OIDMachines'] %}
+
+dsconfig create-external-server --server-name {{ item }}:{{ oid_port }} --type sun-ds --set server-host-name:{{ item }} --set server-port:{{ oid_port }} --set location:{{ hostvars[item]['data_center_location'] }} --set bind-dn:cn=pingSyncAccount,cn=systemids,dc=verizontelematics,dc=com --set password:{{ ping_root_password }}
+
+{% endfor %}
+
+#
+# Status:Create Sync Source
+#
+
+dsconfig create-sync-source --source-name PDS --type ping-identity --set base-dn:{{ base_dn }} {% for item in groups['PingDirectoryMachines'] %} --set server:{{ item }}:{{ ping_directory_secure_port }} {% endfor %}
+
+
+dsconfig create-sync-source --source-name OID --type sun-ds --set base-dn:{{ base_dn }} {% for item in groups['OIDMachines'] %} --set server:{{ item }}:{{ oid_port }} {% endfor %}
+
+
+#
+# Status:Create Sync Destination
+#
+
+dsconfig create-sync-destination --destination-name PDS --type ping-identity --set base-dn:{{ base_dn }} {% for item in groups['PingDirectoryMachines'] %} --set server:{{ item }}:{{ ping_directory_secure_port }} {% endfor %}
+
+dsconfig create-sync-destination --destination-name OID --type sun-ds --set base-dn:{{ base_dn }} {% for item in groups['OIDMachines'] %} --set server:{{ item }}:{{ oid_port }} {% endfor %}
+
+
+#
+# Status:Create Attribute map
+#
+
+dsconfig create-attribute-map --map-name {{ sync_pipe_oid_to_pds }} --set description:{{ sync_pipe_oid_to_pds }}
+dsconfig create-attribute-map --map-name {{ sync_pipe_pds_to_oid }} --set description:{{ sync_pipe_pds_to_oid }}
+
+
+#
+# Status:Create Attribute mapping
+#
+
+dsconfig create-attribute-mapping --map-name {{ sync_pipe_oid_to_pds }} --mapping-name objectClass --type constructed --set value-pattern:top --set value-pattern:VTIPerson
+
+dsconfig create-attribute-mapping --map-name {{ sync_pipe_oid_to_pds }} --mapping-name ds-pwp-account-disabled --type constructed --set description:ds-pwp-account-disabled --set "conditional-value-pattern:(orclIsEnabled=Disabled):true" --set 'conditional-value-pattern:(!(orclIsEnabled=DISABLED)):false'
+
+dsconfig create-attribute-mapping --map-name {{ sync_pipe_pds_to_oid }} --mapping-name orclIsEnabled --type constructed --set description:orclIsEnabled --set "conditional-value-pattern:(ds-pwp-account-disabled=True):DISABLED" --set 'conditional-value-pattern:(!(ds-pwp-account-disabled=True)):ENABLED'
+
+dsconfig create-attribute-mapping --map-name {{ sync_pipe_pds_to_oid }} --mapping-name objectClass --type constructed --set value-pattern:inetOrgPerson --set value-pattern:orclIDXPerson --set value-pattern:orcluser --set value-pattern:orcluserV2 --set value-pattern:organizationalPerson --set value-pattern:person --set value-pattern:top --set value-pattern:VTIPerson
+
+
+#
+# Status:Create DN Mappings
+#
+
+dsconfig create-dn-map --map-name OID2PDSMBDNMapping --set description:OID2PDSMBDNMapping --set 'from-dn-pattern:*,cn=MBUS,cn=external,cn=Users,dc=verizontelematics,dc=com' --set "to-dn-pattern:{1},ou=Users,ou=MBUS,ou=external,dc=verizontelematics,dc=com"
+
+dsconfig create-dn-map --map-name OID2PDSVVDeviceDNMapping --set description:OID2PDSVVDeviceDNMapping --set 'from-dn-pattern:*,cn=VVUSDevice,cn=external,cn=Users,dc=verizontelematics,dc=com' --set "to-dn-pattern:{1},ou=VVUSDevice,ou=external,dc=verizontelematics,dc=com"
+
+dsconfig create-dn-map --map-name OID2PDSVVDNMapping --set description:OID2PDSVVDNMapping --set 'from-dn-pattern:*,cn=VVUS,cn=external,cn=Users,dc=verizontelematics,dc=com' --set "to-dn-pattern:{1},ou=Users,ou=VVUS,ou=external,dc=verizontelematics,dc=com"
+
+dsconfig create-dn-map --map-name OID2PDSVWDNMapping --set description:OID2PDSVWDNMapping --set 'from-dn-pattern:*,cn=VWUS,cn=external,cn=Users,dc=verizontelematics,dc=com' --set "to-dn-pattern:{1},ou=Users,ou=VWUS,ou=external,dc=verizontelematics,dc=com"
+
+dsconfig create-dn-map --map-name PDS2OIDMBDNMapping --set description:PDS2OIDMBDNMapping --set 'from-dn-pattern:*,ou=Users,ou=MBUS,ou=external,dc=verizontelematics,dc=com' --set "to-dn-pattern:{1},cn=MBUS,cn=external,cn=Users,dc=verizontelematics,dc=com"
+
+dsconfig create-dn-map --map-name PDS2OIDVVDeviceDNMapping --set description:PDS2OIDVVDeviceDNMapping --set 'from-dn-pattern:*,ou=VVUSDevice,ou=external,dc=verizontelematics,dc=com' --set "to-dn-pattern:{1},cn=VVUSDevice,cn=external,cn=Users,dc=verizontelematics,dc=com"
+
+dsconfig create-dn-map --map-name PDS2OIDVVDNMapping --set description:PDS2OIDVVDNMapping --set 'from-dn-pattern:*,ou=Users,ou=VVUS,ou=external,dc=verizontelematics,dc=com' --set "to-dn-pattern:{1},cn=VVUS,cn=external,cn=Users,dc=verizontelematics,dc=com"
+
+dsconfig create-dn-map --map-name PDS2OIDVWDNMapping --set description:PDS2OIDVWDNMapping --set 'from-dn-pattern:*,ou=Users,ou=VWUS,ou=external,dc=verizontelematics,dc=com' --set "to-dn-pattern:{1},cn=VWUS,cn=external,cn=Users,dc=verizontelematics,dc=com"
+
+#
+# Status:Create Sync Pipe
+#
+
+dsconfig create-sync-pipe --pipe-name {{ sync_pipe_oid_to_pds }} --set sync-source:OID --set sync-destination:PDS
+dsconfig create-sync-pipe --pipe-name {{ sync_pipe_pds_to_oid }} --set sync-source:PDS --set sync-destination:OID
+dsconfig create-sync-pipe --pipe-name OID2PDSDevice --set description:OID2PDSDevice --set sync-source:OID --set sync-destination:PDS
+dsconfig create-sync-pipe --pipe-name PDS2OIDDevice --set description:PDS2OIDDevice --set sync-source:PDS --set sync-destination:OID
+
+#
+# Status:Create Sync Class
+#
+
+dsconfig create-sync-class --pipe-name {{ sync_pipe_oid_to_pds }} --class-name {{ sync_pipe_oid_to_pds }} --set include-base-dn:cn=MBUS,cn=external,cn=Users,dc=verizontelematics,dc=com --set include-base-dn:cn=VVUS,cn=external,cn=Users,dc=verizontelematics,dc=com --set include-base-dn:cn=VWUS,cn=external,cn=Users,dc=verizontelematics,dc=com --set attribute-map:{{ sync_pipe_oid_to_pds }} --set dn-map:OID2PDSMBDNMapping --set dn-map:OID2PDSVVDNMapping --set dn-map:OID2PDSVWDNMapping --set auto-mapped-source-attribute:cn --set auto-mapped-source-attribute:givenname --set auto-mapped-source-attribute:mail --set auto-mapped-source-attribute:sn --set auto-mapped-source-attribute:uid --set auto-mapped-source-attribute:userpassword --set auto-mapped-source-attribute:vvaccountstatus --set auto-mapped-source-attribute:vvsiebelcontactid
+
+dsconfig create-sync-class --pipe-name OID2PDSDevice --class-name OID2PDSDevice --set description:OID2PDSDevice --set include-base-dn:cn=VVUSDevice,cn=external,cn=Users,dc=verizontelematics,dc=com --set dn-map:OID2PDSVVDeviceDNMapping
+
+dsconfig create-sync-class --pipe-name {{ sync_pipe_pds_to_oid }} --class-name {{ sync_pipe_pds_to_oid }} --set include-base-dn:cn=MBUS,cn=external,cn=Users,dc=verizontelematics,dc=com --set include-base-dn:cn=VVUS,cn=external,cn=Users,dc=verizontelematics,dc=com --set include-base-dn:cn=VWUS,cn=external,cn=Users,dc=verizontelematics,dc=com --set attribute-map:{{ sync_pipe_pds_to_oid }} --set dn-map:PDS2OIDMBDNMapping --set dn-map:PDS2OIDVVDNMapping --set dn-map:PDS2OIDVWDNMapping --set auto-mapped-source-attribute:cn --set auto-mapped-source-attribute:givenname --set auto-mapped-source-attribute:mail --set auto-mapped-source-attribute:sn --set auto-mapped-source-attribute:uid --set auto-mapped-source-attribute:userpassword --set auto-mapped-source-attribute:vvaccountstatus --set auto-mapped-source-attribute:vvsiebelcontactid
+
+dsconfig create-sync-class --pipe-name PDS2OIDDevice --class-name PDS2OIDDevice --set description:PDS2OIDDevice --set include-base-dn:ou=VVUSDevice,ou=external,dc=verizontelematics,dc=com --set dn-map:PDS2OIDVVDeviceDNMapping

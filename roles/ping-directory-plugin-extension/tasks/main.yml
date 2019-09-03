@@ -1,0 +1,65 @@
+---
+
+##
+# Description: This task installs extensions in the PDS machines.
+# 1. Ping Directory Status Extension
+# 2. Ping Directory PWP User State Extension
+# 3. Ping Directory OID compatible Extension
+##
+
+- name: Download Ping Directory Status Extension
+  get_url: url={{ pds_status_extension_url }} dest={{ ping_location }}
+
+- name: Install Ping Directory Status Extension
+  shell: "./manage-extension --install {{ ping_location }}/{{ status_extension_name }} --no-prompt --ignoreWarnings"
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+- name: Download Ping Directory PWP User State Extension
+  get_url: url={{ pds_ds_plugin_pwp_extension_url }} dest={{ ping_location }}
+
+- name: Install Ping Directory PWP User State Extension
+  shell: "./manage-extension --install {{ ping_location }}/{{ ds_plugin_pwp_extension_name }} --no-prompt --ignoreWarnings"
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+- name: Download Ping Directory OID compatible Extension
+  get_url: url={{ pds_ds_plugin_oid_extension_url }} dest={{ ping_location }}
+
+- name: Install Ping Directory PWP User State Extension
+  shell: "./manage-extension --install {{ ping_location }}/{{ ds_plugin_oid_extension_name }} --no-prompt --ignoreWarnings"
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+- name: Copy over the root user password file
+  template: src=ping_root_password.pwd  dest={{ ping_location }} mode=0400
+
+- name: Copy over the extensions config batch file
+  template: src=extensions_config.dsconfig  dest={{ ping_location }} mode=0400
+
+- name: Run dsconfig batch file
+  command: './dsconfig \
+                 --hostname {{ ansible_fqdn }} \
+                 --port {{ ping_directory_port }} \
+                 --bindDN {{ ping_directory_root_user }} \
+                 --bindPasswordFile {{ ping_directory_root_password_location }} \
+                 --no-prompt \
+                 --batch-file {{ping_location}}/extensions_config.dsconfig \
+                 --applyChangeTo single-server'
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+- name: Purge assets
+  file: path="{{ ping_location }}/{{ status_extension_name }}" state=absent
+
+- name: Purge assets
+  file: path="{{ ping_location }}/{{ ds_plugin_pwp_extension_name }}" state=absent
+
+- name: Purge assets
+  file: path="{{ ping_location }}/{{ ds_plugin_oid_extension_name }}" state=absent
+
+- name: Purge assets
+  file: path="{{ ping_location }}/extensions_config.dsconfig" state=absent
+
+- name: Purge assets
+  file: path="{{ ping_location }}/ping_root_password.pwd" state=absent

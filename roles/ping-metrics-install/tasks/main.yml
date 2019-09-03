@@ -1,0 +1,103 @@
+---
+
+##
+# Description: This role installs and configures the Ping Metrics in the PSS machines with port 2389 and 2636
+##
+
+- name: Create directory for Ping Metrics
+  file: state=directory path={{ ping_location }}
+
+- name: Download Ping Metrics zip to host
+  get_url: url={{ ping_metrics_download_url }}PingDataMetrics-{{ ping_version }}.zip dest={{ ping_location }}
+
+- name: Unzip the Ping Metrics
+  command: '{{ unzip }} PingDataMetrics-{{ ping_version }}.zip'
+  args:
+    chdir: "{{ ping_location }}"
+
+- name: Rename the folder
+  command: 'mv PingDataMetrics pdm'
+  args:
+    chdir: "{{ ping_location }}"
+
+- name: Delete the Ping Sync zip
+  file: path={{ ping_location }}/PingDataMetrics-{{ ping_version }}.zip state=absent
+
+- name: Copy over the root user password file
+  template: src=ping_root_password.pwd  dest={{ ping_location }} mode=0400
+
+- name: Copy over the dsconfig batch file
+  template: src=pdm_config.dsconfig  dest={{ ping_location }} mode=0400 force=yes
+
+- name: Setup Ping Metrics
+  command: 'env JAVA_HOME={{ jdk_location }} \
+         ./setup --acceptLicense \
+         --localHostName {{ ansible_fqdn }} \
+         --ldapPort {{ ping_metrics_port }} \
+         --rootUserDN {{ ping_metrics_root_user }} \
+         --rootUserPasswordFile {{ ping_directory_root_password_location }} \
+         --jvmTuningParameter AGGRESSIVE \
+         --maxHeapSize 2g \
+         --ldapsPort {{ ping_metrics_secure_port }} \
+         --httpsPort {{ ping_metrics_https_port }} \
+         --enableStartTLS \
+         --useJavaKeystore {{ keystore_location }} \
+         --keyStorePassword {{ keystore_password }} \
+         --certNickname {{ certificate_nickname }} \
+         --useJavaTruststore {{ trustore_location }} \
+         --databaseAdminAccountPasswordFile {{ ping_directory_root_password_location }} \
+         --databaseAccountPasswordFile {{ ping_directory_root_password_location }} \
+         --no-prompt'
+  args:
+    chdir: "{{ ping_metrics_home }}"
+
+- name: Create parent log directory
+  file: state=directory path={{ log_parent_directory }} mode=0755
+
+- name: Create log directory for Ping Metrics
+  file: state=directory path={{ ping_metrics_log_location }}
+
+# At this point we need to add the Ping servers (PDS, PPS and PSS) under monitoring. 
+# We are grabbing the host details from 'ALL' groups but we need to exclude the OpenAM machines from the list
+# For that purpose we are using 'difference' tag which excludes the entries that mentioned after the pipe '|' symbol
+
+- name: Add servers for monitoring
+  command: './monitored-servers add-servers \
+           --bindDN {{ping_metrics_root_user}} \
+           --port {{ping_metrics_port}} \
+           --bindPasswordFile {{ ping_directory_root_password_location }} \
+           --monitoringUserBindPassword {{ ping_directory_root_password_location }} \
+           --remoteServerConnectionSecurity useSSL \
+           --remoteServerHostname {{item}} \
+           --remoteServerPort {{ping_directory_secure_port}} \
+           --remoteServerBindPassword {{ ping_root_password }}'
+  args:
+    chdir: "{{ ping_metrics_bin }}"
+  with_items: "{{ groups['ALL'] | difference(groups['OpenAMMachines']) | difference(groups['OIDMachines']) }}"
+
+- name: Run dsconfig batch file
+  command: './dsconfig --hostname {{ ansible_fqdn }} --port {{ ping_metrics_port }} --bindDN {{ ping_metrics_root_user }} --bindPasswordFile {{ ping_directory_root_password_location }} --no-prompt --batch-file {{ping_location}}/pdm_config.dsconfig'
+  args:
+    chdir: "{{ ping_metrics_bin }}"
+
+- name: Stop Metrics Server
+  command: "./stop-metrics-engine"
+  args:
+    chdir: "{{ ping_metrics_bin }}"
+
+- wait_for:
+    host: "{{ ansible_fqdn }}"
+    port: "{{ ping_metrics_port }}"
+    delay: 10
+    state: stopped
+
+- name: Start Metrics Server
+  command: "./start-metrics-engine"
+  args:
+    chdir: "{{ ping_metrics_bin }}"
+
+- name: Delete pdm_config.dsconfig file
+  file: path="{{ping_location}}/pdm_config.dsconfig" state=absent
+
+- name: Delete ping_root_password.pwd file
+  file: path="{{ping_location}}/ping_root_password.pwd" state=absent

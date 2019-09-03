@@ -1,0 +1,46 @@
+---
+
+##
+# Description: This task configures replication between all the OpenDJ instances. It replicates only
+# the configStore backend
+##
+
+- name: Copy over the root user password file
+  template: src=opendj_root_password.pwd  dest={{ opendj_location }} mode=0400
+
+- name: 'Replication of config store'
+  command: './dsreplication configure \
+          --host1 {{ ansible_fqdn }} \
+          --port1 {{ opendj_directory_secure_port }} \
+          --bindDn1 {{ opendj_root_user }} \
+          --bindPasswordFile1 {{ opendj_root_password_location }} \
+          --host2 {{ item }} \
+          --port2 {{ opendj_directory_secure_port }} \
+          --bindDn2 {{ opendj_root_user }} \
+          --bindPasswordFile2 {{ opendj_root_password_location }} \
+          --replicationPort1 {{ opendj_directory_replication_port }} \
+          --secureReplication1 \
+          --replicationPort2 {{ opendj_directory_replication_port }} \
+          --secureReplication2 \
+          --baseDn {{ config_base_dn }} \
+          --adminUid admin \
+          --adminPasswordFile {{ opendj_root_password_location }} \
+          --no-prompt'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+  with_items: "{{ opendj_hosts }}"
+
+- name: 'Initialize replication'
+  command: './dsreplication initialize-all \
+          --adminUid admin \
+          --adminPasswordFile {{ opendj_root_password_location }} \
+          --trustAll \
+          --no-prompt \
+          --baseDn {{ config_base_dn }} \
+          --hostname {{ ansible_fqdn }} \
+          --port {{ opendj_directory_secure_port }}'
+  args:
+    chdir: "{{ opendj_bin_location }}"
+
+- name: Purge asset
+  file: path="{{ opendj_location }}/opendj_root_password.pwd" state=absent

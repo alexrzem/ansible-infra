@@ -1,0 +1,101 @@
+---
+
+##
+# Description: This task installs Ping Directory and does the configurations using the dsconfig commands
+##
+
+
+- name: Create directory for Ping Directory
+  file: state=directory path={{ ping_location }}
+
+- name: Download Ping Directory zip to host
+  get_url: url={{ ping_directory_download_url }}PingDirectory-{{ ping_version }}.zip dest={{ ping_location }}
+
+- name: Unzip the Ping Directory
+  command: '{{ unzip }} PingDirectory-{{ ping_version }}.zip'
+  args:
+    chdir: "{{ ping_location }}"
+
+- name: Rename the folder
+  command: 'mv PingDirectory pds'
+  args:
+    chdir: "{{ ping_location }}"
+
+- name: Delete the Ping zip
+  file: path={{ ping_location }}/PingDirectory-{{ ping_version }}.zip state=absent
+
+- name: Copy over the root user password file
+  template: src=ping_root_password.pwd  dest={{ ping_location }} mode=0400
+
+- name: Copy over the dsconfig batch file
+  template: src=pds_config.dsconfig  dest={{ ping_location }} mode=0400
+
+- name: Copy over the user and group ldif file
+  template: src=top.ldif  dest={{ ping_location }} mode=0400
+
+- name: Copy over the 44 custom schema ldif file
+  template: src=44-user.ldif  dest="{{ ping_home }}/config/schema" mode=0600
+
+- name: Copy over the 99 custom schema ldif file
+  template: src=99-user.ldif  dest="{{ ping_home }}/config/schema" mode=0600
+
+- name: Setup Ping Directory
+  command: 'env JAVA_HOME={{ jdk_location }} \
+         ./setup \
+         --acceptLicense \
+         --baseDN {{ base_dn }} \
+         --addBaseEntry \
+         --localHostName {{ ansible_fqdn }} \
+         --ldapPort {{ ping_directory_port }} \
+         --rootUserDN {{ ping_directory_root_user }} \
+         --rootUserPasswordFile {{ ping_directory_root_password_location }} \
+         --maxHeapSize 5g \
+         --jvmTuningParameter AGGRESSIVE \
+         --primeDB \
+         --ldapsPort {{ ping_directory_secure_port }} \
+         --httpsPort {{ ping_https_port }} \
+         --useJavaKeystore {{ keystore_location }} \
+         --keyStorePassword {{ keystore_password }} \
+         --certNickname {{ certificate_nickname }} \
+         --no-prompt'
+  args:
+    chdir: "{{ ping_home }}"
+
+- name: Add user and group entries
+  command: './ldapmodify --hostname {{ ansible_fqdn }} --port {{ ping_directory_port }} --bindDN {{ ping_directory_root_user }} --bindPasswordFile {{ ping_directory_root_password_location }} --filename {{ping_location}}/top.ldif --defaultAdd -c'
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+- name: Create parent log directory
+  file: state=directory path={{ log_parent_directory }} mode=0755
+
+- name: Create log directory for Ping Directory
+  file: state=directory path={{ ping_directory_log_location }}
+
+# The dsconfig commands are written in pds_config.dsconfig in the templates.
+- name: Run dsconfig batch file
+  command: './dsconfig --hostname {{ ansible_fqdn }} --port {{ ping_directory_port }} --bindDN {{ ping_directory_root_user }} --bindPasswordFile {{ ping_directory_root_password_location }} --no-prompt --batch-file {{ping_location}}/pds_config.dsconfig '
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+- name: Purge assets
+  command: 'rm pds_config.dsconfig top.ldif'
+  args:
+    chdir: "{{ ping_location }}"
+
+- name: Stopping Ping Directory
+  command: "./stop-ds"
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+- name: Moving the userRoot db folders
+  command: "mv {{ ping_home }}/db/userRoot {{ ping_directory_db_location }}/userRoot"
+
+- name: Moving the changelog db folders
+  command: "mv {{ ping_home }}/db/changelog {{ ping_directory_db_location }}/changelog"
+
+- name: Starting Ping Directory
+  command: "./start-ds"
+  args:
+    chdir: "{{ ping_bin_location }}"
+

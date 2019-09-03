@@ -1,0 +1,65 @@
+---
+
+##
+# Description: This task creates encryption settings key for PDS.
+##
+
+- name: Copy over the root user password file
+  template: src=ping_root_password.pwd  dest={{ ping_location }} mode=0400
+
+# The result of this task is registered in the name called 'sentence' which is used in the next task
+
+- name: 'Create an encryption-settings definition'
+  command: './encryption-settings create \
+            --cipher-algorithm AES \
+            --key-length-bits 256 \
+            --set-preferred'
+  args:
+    chdir: "{{ ping_bin_location }}"
+  register: sentence
+
+# set_fact allows us for setting a new variable which holds on a value that can be used anywhere in a role. 
+# Here settings_defintion_id is a variable which holds the split value of 'sentence'(registered in the previous task)
+
+- set_fact:
+    settings_definition_id: "{{ sentence.stdout.split('ID\n')[1].split('.')[0] }}"
+
+# 'debug' is used for printing statements during execution. This is helpful for debugging purposes without halting the playbook
+# Here the debug message prints the value of encryption settings definition which is stored in the variable settings_definition_id
+
+- debug: 
+    msg: "Encryption-Settings Definition ID: {{ settings_definition_id }}"
+
+- name: 'Export the encryption-settings definition'
+  command: './encryption-settings export \
+            --id {{ settings_definition_id }} \
+            --output-file {{ ping_location }}/pds-encryption-key \
+            --pin-file {{ ping_location }}/ping_root_password.pwd'
+  args:
+    chdir: "{{ ping_bin_location }}"
+
+# Fetch works like copy, but in reverse. 
+# It is used for fetching files from remote machines and storing them locally in a file tree, organized by hostname(ansible machine).
+
+- fetch:
+    src: "{{ ping_location }}/pds-encryption-key"
+    dest: roles/ping-directory-key-creation/templates/
+    flat: yes
+
+# Note: We are running this whole role in only one Ping Diretory Machine (Refer hosts file) 
+# But we want to copy the encryption-settings definition file (which we got using 'fetch' in the previous step) to all the PDS servers. 
+# For this we are using 'delegate_to' command. This delegates the control and used for performing various multi-tier deployments
+# Here {{item}} refers to Ping Directory Machines which will be incorporated one by one into the items (using 'with_items')
+
+- name: Copy the encryption-settings definition file
+  copy: 
+    src: roles/ping-directory-key-creation/templates/pds-encryption-key 
+    dest: "{{ ping_location }}"
+    mode: 0644
+    remote_src: false
+    force: yes
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['PingDirectoryMachines'] }}"  
+
+- name: Delete password file
+  file: path="{{ ping_location }}/ping_root_password.pwd" state=absent
